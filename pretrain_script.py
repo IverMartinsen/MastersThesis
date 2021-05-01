@@ -1,28 +1,21 @@
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import os
-from model import CodNet5, Mnist
-from dataset import Dataset
+from model import CodNet5
 import numpy as np
-
+from dataloader import dataloader
 
 '''
 Import images
 '''
 path = r'C:\Users\iverm\OneDrive\Desktop\Aktive prosjekter\Masteroppgave\Data\Torskeotolitter\unknown'
 
-data = Dataset((128, 128), keep_aspect=False)
-data.load(path)
-
-sets, names = data.kfoldsplit(3)
-
-train_ds = sets[0].concatenate(sets[1]).batch(32).shuffle(1000)
-valid_ds = sets[2].batch(32)
+train_ds, valid_ds = dataloader(path, (128, 128), 1, splits=(0.8, 0.2))
 
 '''
 Train model
 '''
-model = Mnist()
+model = CodNet5()
 
 model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
               loss=tf.keras.losses.BinaryCrossentropy(),
