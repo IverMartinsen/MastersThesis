@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Flatten, Conv2D, MaxPool2D, ReLU
 from tensorflow.keras.layers import BatchNormalization, Dropout, DepthwiseConv2D
+from tensorflow.keras.layers import InputLayer
 from tensorflow.keras import Model
 
 from tensorflow.keras.layers.experimental.preprocessing import RandomFlip
@@ -8,10 +9,69 @@ from tensorflow.keras.layers.experimental.preprocessing import RandomRotation
 from tensorflow.keras.layers.experimental.preprocessing import RandomZoom
 from tensorflow.keras.layers.experimental.preprocessing import RandomHeight
 from tensorflow.keras.layers.experimental.preprocessing import RandomTranslation
-
+from tensorflow.keras.layers.experimental.preprocessing import Rescaling
 
 #RandomFlip("horizontal_and_vertical")
 #RandomRotation(0.2)
+
+CodNet = tf.keras.Sequential([
+    InputLayer(input_shape=(128, 128, 1)),
+    Rescaling(1./255.0),
+    RandomFlip("horizontal"),
+    RandomZoom((-0.2, 0.2), (-0.2, 0.2)),
+    Conv2D(8, 3, strides = (1, 1), padding='same', kernel_regularizer=tf.keras.regularizers.L2(l2=1e-3)),
+    BatchNormalization(),
+    ReLU(),
+    MaxPool2D(),
+    
+    Conv2D(16, 3, padding='same', kernel_regularizer=tf.keras.regularizers.L2(l2=1e-3)),
+    BatchNormalization(),
+    ReLU(),
+    MaxPool2D(),
+        
+    Conv2D(32, 3, padding='same', kernel_regularizer=tf.keras.regularizers.L2(l2=1e-3)),
+    BatchNormalization(),
+    ReLU(),
+    MaxPool2D(),
+
+    Conv2D(64, 3, padding='same', kernel_regularizer=tf.keras.regularizers.L2(l2=1e-3)),
+    BatchNormalization(),
+    ReLU(),
+    MaxPool2D(),
+    
+    Flatten(),
+    
+    Dense(32, kernel_regularizer=tf.keras.regularizers.L2(l2=1e-3)),
+    BatchNormalization(),
+    ReLU(),
+    Dropout(0.5),
+
+    Dense(16, kernel_regularizer=tf.keras.regularizers.L2(l2=1e-3)),
+    BatchNormalization(),
+    ReLU(),
+    Dropout(0.5),
+
+    Dense(1, activation='sigmoid', kernel_regularizer=tf.keras.regularizers.L2(l2=1e-3))
+    ])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class CodNet5(Model):
 
@@ -20,10 +80,13 @@ class CodNet5(Model):
       
     super().__init__()
     
-    
-    self.rescale = tf.keras.layers.experimental.preprocessing.Rescaling(1./255.0)
-    self.flip = RandomFlip("horizontal")
-    self.zoom = RandomZoom((-0.2, 0.2), (-0.2, 0.2))
+    self.input_layer = InputLayer(input_shape=(128, 128, 1))
+    self.rescale = tf.keras.layers.experimental.preprocessing.Rescaling(1./255.0,
+                                                                        input_shape=(128, 128, 1))
+    self.flip = RandomFlip("horizontal",
+                           input_shape=(128, 128, 1))
+    self.zoom = RandomZoom((-0.2, 0.2), (-0.2, 0.2),
+                           input_shape=(128, 128, 1))
     #self.height = RandomHeight(0.2)
     #self.translate = RandomTranslation(0.2, 0.2)
     #self.rotate = RandomRotation(0.2)
@@ -96,6 +159,7 @@ class CodNet5(Model):
 
   def call(self, x):
     
+    x = self.input_layer(x)
     x = self.rescale(x)
     x = self.flip(x)
     x = self.zoom(x)

@@ -2,37 +2,27 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import os
-from model import CodNet5, Mnist
-from dataset import Dataset
+from model import CodNet5, CodNet
 from confmat import ConfMat
+from dataloader import dataloader
 
 '''
 Import images
 '''
 path = r'C:\Users\iverm\OneDrive\Desktop\Aktive prosjekter\Masteroppgave\Data\Torskeotolitter\raw'
 
-data = Dataset((128, 128), keep_aspect=False)
-data.load(path)
-#data.split((0.6, 0.2, 0.2))
-
-sets, names = data.kfoldsplit(1)
 
 #data2 = Dataset((128, 128), keep_aspect=True)
 #data2.load(r'C:\Users\iverm\OneDrive\Desktop\Aktive prosjekter\Masteroppgave\Data\Torskeotolitter\unknown')
 #sets2, _ = data2.kfoldsplit(1)
 
-
-train_ds = sets[0].take(366).batch(32).shuffle(363)
-valid_ds = sets[0].skip(366).take(122).batch(32)
-test_ds = sets[0].skip(488).take(122).batch(32)
-
-#rescale = tf.keras.layers.experimental.preprocessing.Rescaling(1./255.0)
-
+train_ds, valid_ds, test_ds = dataloader(path, (128, 128), 1, [0.6, 0.2, 0.2])
+train_ds = train_ds.shuffle(1000)
 
 '''
 Train model
 '''
-model = CodNet5()
+model = CodNet
 
 model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
               loss=tf.keras.losses.BinaryCrossentropy(),
@@ -55,7 +45,7 @@ callbacks = [tf.keras.callbacks.EarlyStopping(patience=100,
                                               restore_best_weights=True)]
 
 history = model.fit(train_ds,
-                    epochs=10000,
+                    epochs=10,
                     validation_data=valid_ds,
                     callbacks=callbacks)
 

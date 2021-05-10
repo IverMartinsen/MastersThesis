@@ -71,8 +71,10 @@ def process_path(file_path, image_size, channels, keep_aspect, class_names):
         img = tf.image.resize_with_pad(img, image_size[0], image_size[1])
     else:    
         img = tf.image.resize(img, image_size)
-
-    return img, label
+    
+    filename = tf.strings.split(file_path, os.path.sep)[-1]
+    img.filename = filename
+    return img, label, filename
 
 def dataloader(file_path, image_size, channels, splits=1, keep_aspect=False,
                batch_size=32):
@@ -156,19 +158,22 @@ def dataloader(file_path, image_size, channels, splits=1, keep_aspect=False,
     for j in range(num_subsets):
         
         subsets[j] = subsets[j].shuffle(len(subsets[j]),
-                                            reshuffle_each_iteration=False)
+                                        reshuffle_each_iteration=False)
         
-        filenames = [str(path.numpy()).split('\\')[-1][:-1]
-                     for path in list(subsets[j])]
-                
         subsets[j] = subsets[j].map(lambda x: process_path(
             x, image_size, channels, keep_aspect, class_names),
             num_parallel_calls=tf.data.AUTOTUNE)
 
         # configure for performance
-        subsets[j] = subsets[j].cache().shuffle(buffer_size=1000)
+        subsets[j] = subsets[j].cache()
         subsets[j] = subsets[j].batch(batch_size)
         subsets[j] = subsets[j].prefetch(buffer_size=tf.data.AUTOTUNE)
+        
+        filenames = [[item.decode() for item in element.numpy()]
+                     for element in list(subsets[j].map(lambda x, y, z: z))]
+        
+        subsets[j] = subsets[j].map(lambda x, y, z: (x, y))
+
         subsets[j].filenames = filenames
         subsets[j].class_names = label_names
 
