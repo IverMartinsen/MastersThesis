@@ -3,9 +3,10 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import os
 from model import CodNet5, CodNet
-from standard_model import Model
+from standard_model_functional import Model
 from confmat import ConfMat
 from dataloader import dataloader
+from callbacks import TestAccuracy
 
 '''
 Import images
@@ -20,30 +21,15 @@ Train model
 '''
 model = Model
 
-model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-2),
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
               loss=tf.keras.losses.BinaryCrossentropy(),
               metrics=[tf.keras.metrics.BinaryAccuracy()])
-
-class TestAccuracy(tf.keras.callbacks.Callback):
-    def __init__(self, test_ds):
-        super().__init__()
-        
-        self.test_ds = test_ds
-        self.accuracy = []
-            
-    def on_epoch_end(self, epoch, logs=None):
-        accuracy = self.model.evaluate(self.test_ds, verbose=0)[1]
-        self.accuracy.append(accuracy)
-
-    def on_train_end(self, logs=None):
-        self.model.history.history['test_binary_accuracy'] = self.accuracy
-
 
 callbacks = [tf.keras.callbacks.EarlyStopping(
     patience=100, restore_best_weights=True), TestAccuracy(test_ds)]
 
 history = model.fit(train_ds,
-                    epochs=10,
+                    epochs=10000,
                     validation_data=valid_ds,
                     callbacks=callbacks)
             
