@@ -52,7 +52,7 @@ x = Dropout(0.5)(x)
 
 outputs = Dense(1, activation='sigmoid', kernel_regularizer=L2)(x)
 
-Model = tf.keras.Model(inputs=inputs, outputs=outputs)
+model = tf.keras.Model(inputs=inputs, outputs=outputs)
 
 def build_model(hp):
     L2 = tf.keras.regularizers.L2(l2=hp.Choice(

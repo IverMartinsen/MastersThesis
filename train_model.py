@@ -3,10 +3,13 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import os
 from model import CodNet5, CodNet
-from standard_model_functional import Model
+from standard_model_functional import model
 from confmat import ConfMat
 from dataloader import dataloader
 from callbacks import TestAccuracy
+from guided_backprop import build_model, compute_grads
+from matplotlib import cm
+
 
 '''
 Import images
@@ -19,7 +22,6 @@ train_ds = train_ds.shuffle(1000)
 '''
 Train model
 '''
-model = Model
 
 model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
               loss=tf.keras.losses.BinaryCrossentropy(),
@@ -29,7 +31,7 @@ callbacks = [tf.keras.callbacks.EarlyStopping(
     patience=100, restore_best_weights=True), TestAccuracy(test_ds)]
 
 history = model.fit(train_ds,
-                    epochs=10000,
+                    epochs=10,
                     validation_data=valid_ds,
                     callbacks=callbacks)
             
@@ -93,4 +95,29 @@ for row in output:
 np.savetxt(a_file, output, delimiter=',', fmt='%s')
 a_file.close()
 
+'''
+CAM by guided backpropagation
+'''
+guided_backprop_model = build_model(model)
 
+image = list(test_ds)[0][0][3]
+grads = compute_grads(image, guided_backprop_model)
+
+vmin = 0
+vmax = 1
+
+hm = (grads - np.min(grads)) / np.max(grads - np.min(grads))
+
+fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+ax1.imshow(image, 'gray')
+ax1.axis('off')
+ax1.set_title('Input image')
+
+ax2.imshow(hm, cm.jet, vmin=vmin, vmax=vmax)
+ax2.axis('off')
+ax2.set_title('Pixel relevance by Guided Backpropagation')
+
+ax3.imshow(image, 'gray', alpha = 0.5)
+ax3.imshow(hm, cm.jet, vmin=vmin, vmax=vmax, alpha = 0.7)
+ax3.axis('off')
+ax3.set_title('Combined image')

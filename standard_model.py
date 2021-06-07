@@ -68,7 +68,7 @@ class GuidedReLU(tf.keras.layers.Layer):
 
 GBModel = tf.keras.Sequential([
     InputLayer(input_shape=(128, 128, 1)),
-    Rescaling(1./255.0),
+    Rescaling(1./127.5, offset=-1),
     RandomFlip("horizontal"),
     Conv2D(8, 3, strides = (1, 1), padding='same', kernel_regularizer=tf.keras.regularizers.L2(l2=1e-3)),
     BatchNormalization(),
