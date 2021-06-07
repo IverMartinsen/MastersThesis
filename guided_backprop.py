@@ -34,9 +34,9 @@ def build_model(trained_model):
         if isinstance(layer, tf.keras.layers.ReLU):
             x = tf.keras.layers.Activation(guided_relu)(x)
         # or replace relu activation functions
-        #elif hasattr(layer, 'activation') and layer.activation == 'relu':
-        #    layer.activation = guided_relu
-        #    x = layer(x)
+        elif hasattr(layer, 'activation') and layer.activation == 'relu':
+            layer.activation = guided_relu
+            x = layer(x)
         else:
             x = layer(x)
         
