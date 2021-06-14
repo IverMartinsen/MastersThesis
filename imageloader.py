@@ -7,8 +7,24 @@ Contains:
 
 import pathlib
 import numpy as np
-import tensorflow as tf
 import os
+from PIL import Image
+
+class ImageGenerator:
+    def __init__(self, file_paths, image_size, class_names):
+        self.file_paths = file_paths
+        self.image_size = image_size
+        self.class_names = class_names
+    
+    def __getitem__(self, key):
+        labels = np.array([get_label(file_path, self.class_names) for 
+                  file_path in self.file_paths])
+        images = np.moveaxis(np.dstack([np.array(Image.open(file_path).resize(self.image_size)).astype(float) for file_path in self.file_paths]), -1, 0)
+        filenames = [file_path.split(os.path.sep)[-1] for file_path in self.file_paths]
+        
+        test = {'images':images, 'labels':labels, 'filenames':filenames}
+        return test[key]
+
 
 def get_label(file_path, class_names):
     '''
@@ -28,13 +44,14 @@ def get_label(file_path, class_names):
 
     '''
     # convert the path to a list of path components
-    parts = tf.strings.split(file_path, os.path.sep)
+    parts = file_path.split(os.path.sep)
     # The second to last is the class-directory
     one_hot = parts[-2] == class_names
+    assert(np.sum(one_hot) == 1)
     # Integer encode the label
-    return tf.argmax(one_hot)
+    return np.argmax(one_hot)
 
-def process_path(file_path, image_size, channels, keep_aspect, class_names):
+def process_path(file_path, image_size, class_names):
     '''
     Takes an image file path and returns a tuple of (tensor, label)
     with each image in tensor resized to image_size.
@@ -60,24 +77,13 @@ def process_path(file_path, image_size, channels, keep_aspect, class_names):
         Class label.
 
     '''
-    # get image label
     label = get_label(file_path, class_names)
-    # load the raw data from the file as a string
-    img = tf.io.read_file(file_path)
-    # convert the compressed string to a 3D uint8 tensor
-    img = tf.image.decode_jpeg(img, channels=channels)
-    # resize image to image_size
-    if keep_aspect:
-        img = tf.image.resize_with_pad(img, image_size[0], image_size[1])
-    else:    
-        img = tf.image.resize(img, image_size)
+    img = np.array(Image.open(file_path).resize(image_size)).astype(float)
+    filename = file_path.split(os.path.sep)[-1]
     
-    filename = tf.strings.split(file_path, os.path.sep)[-1]
-    img.filename = filename
     return img, label, filename
 
-def dataloader(file_path, image_size, channels, splits=1, keep_aspect=False,
-               batch_size=32):
+def imageloader(file_path, image_size, splits=1, seed=None):
     '''
     Loads images from path to class folders.
 
@@ -106,11 +112,16 @@ def dataloader(file_path, image_size, channels, splits=1, keep_aspect=False,
         Dataset of images.
 
     '''
+    
+    filetype='jpg'
+    
+    rng = np.random.RandomState(seed)
+    
     data_dir = pathlib.Path(file_path)
 
     class_names = np.array([item.name for item in data_dir.glob('*')])
-
-    num_images = len(list(data_dir.glob('*/*.jpg')))
+    
+    num_images = len(list(data_dir.glob('*/*.' + filetype)))
     num_classes = len(class_names)
     
     print(f'Total number of images: {num_images}')
@@ -119,13 +130,18 @@ def dataloader(file_path, image_size, channels, splits=1, keep_aspect=False,
     label_names = {}
     files_by_class = {}
     
+    # list and shuffle filenames for each class
     for i, class_name in enumerate(class_names):
         # map labels with class names
         label_names[i] = class_name
-        # store filenames as tf.Dataset
-        files_by_class[class_name] = (tf.data.Dataset.list_files(
-            str(data_dir/class_name/'*'), shuffle=False))
-
+        # store filepaths in list
+        files_by_class[class_name] = [
+            str(data_dir/class_name/filename) for 
+            filename in os.listdir(str(data_dir/class_name))]
+        
+        rng.shuffle(files_by_class[class_name])
+ 
+    # create list of splits
     if type(splits) == int:
         num_subsets = splits
         splits = np.repeat(1 / splits, num_subsets)
@@ -137,7 +153,7 @@ def dataloader(file_path, image_size, channels, splits=1, keep_aspect=False,
         
     subsets = {}
     
-    # for each class, select same proportion for all subsets
+    # for each class, select same proportion of images for all subsets
     for i, class_name in enumerate(class_names):
         
         class_size = len(files_by_class[class_name])
@@ -145,51 +161,34 @@ def dataloader(file_path, image_size, channels, splits=1, keep_aspect=False,
 
         for j in range(num_subsets):
             
-            subset_size = int(class_size*splits[j])
+            subset_size = class_size*splits[j]
             
             if i == 0:
-                if j < num_subsets - 1:
-                    subsets[j] = list_class.skip(subset_size*j).take(subset_size)
-                else:
-                    subsets[j] = list_class.skip(subset_size*j)
+                subsets[j] = list_class[
+                    int(np.round(subset_size*j)):
+                        int(np.round(subset_size*(j + 1)))]
             else:
-                if j < num_subsets - 1:
-                    subsets[j] = (subsets[j].concatenate(
-                        list_class.skip(subset_size*j).take(subset_size)))
-                else:
-                    subsets[j] = (subsets[j].concatenate(
-                        list_class.skip(subset_size*j)))
-                    
+                subsets[j] = np.concatenate((subsets[j],
+                    list_class[
+                        int(np.round(subset_size*j)):
+                            int(np.round(subset_size*(j + 1)))]))
+    
+    # print number of images in splits
+    print('----------------------------')
+    for size in np.unique([len(subset) for subset in subsets.values()]):
+        num = np.sum(
+            np.array([len(subset) for subset in subsets.values()]) == size)
+        if num == 1:
+            print(f'{num} subset with {size} images')
+        else:
+            print(f'{num} subsets with {size} images')
+    
+    
     # shuffle filenames for each subset
     for j in range(num_subsets):
         
-        subsets[j] = subsets[j].shuffle(
-            len(subsets[j]), reshuffle_each_iteration=False)
+        rng.shuffle(subsets[j])        
         
-        subsets[j] = subsets[j].map(lambda x: process_path(
-            x, image_size, channels, keep_aspect, class_names),
-            num_parallel_calls=tf.data.AUTOTUNE)
-
-        # configure for performance
-        subsets[j] = subsets[j].cache()
-        subsets[j] = subsets[j].batch(batch_size)
-        subsets[j] = subsets[j].prefetch(buffer_size=tf.data.AUTOTUNE)
-        
-        filenames = [[item.decode() for item in element.numpy()]
-                     for element in list(subsets[j].map(lambda x, y, z: z))]
-        
-        subsets[j] = subsets[j].map(lambda x, y, z: (x, y))
-
-        subsets[j].filenames = filenames
-        subsets[j].class_names = label_names
-    
-    assertlist = np.array([])
-    for sets in tuple(subsets.values()):
-        names = np.concatenate([i for i in sets.filenames])
-        assertlist = np.concatenate((assertlist, names))
-    
-    print(np.unique(assertlist).shape)
-    
-    
-
+        subsets[j] = ImageGenerator(subsets[j], image_size, class_names)  
+            
     return tuple(subsets.values())
