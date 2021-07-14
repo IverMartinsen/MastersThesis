@@ -61,3 +61,20 @@ def compute_grads(inputs, model):
         return tape.gradient(outputs, inputs)
     else:
         return tf.squeeze(tape.gradient(outputs, inputs), 0)
+    
+    
+
+def build_extractor(model, layers):
+    """
+    Returns model which outputs hidden feature maps from given layers.
+    
+    Example of usage:
+        
+    extractor = build_extractor(model, layers)
+    features = extractor.predict(img_tensors)
+    plt.imshow(features)
+    """
+
+    layer_outputs = [layer.output for layer in [model.layers[i] for i in layers]]
+
+    return Model(inputs = model.input, outputs = layer_outputs)    
