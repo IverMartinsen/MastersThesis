@@ -1,120 +1,102 @@
-import matplotlib.pyplot as plt
-import numpy as np
-import os
-import tensorflow as tf
+# -*- coding: utf-8 -*-
+"""
+An example of applying transfer learning on otolith images.
 
-from dataset import Dataset
+Created on Mon Jun 14 19:48:11 2021
+
+@author: iverm
+"""
+import tensorflow as tf
+import matplotlib.pyplot as plt
+from imageloader import imageloader
+from tensorflow.keras.layers import GlobalAveragePooling2D, Dropout, Dense
+from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+
 
 '''
 load images
 '''
-path = path = r'C:\Users\iverm\OneDrive\Desktop\Aktive prosjekter\Masteroppgave\Data\Torskeotolitter\standard'
-
-dataset = Dataset((160, 160), 3)
-dataset.load(path)
-sets, names = dataset.kfoldsplit(5)
-
-train_ds = sets[0].concatenate(sets[1]).concatenate(sets[2]).batch(32).shuffle(1000)
-valid_ds = sets[3].batch(32).shuffle(1000)
-test_ds = sets[4].batch(32).shuffle(1000)
+path = r'C:\Users\iverm\Google Drive\Masteroppgave\Data\Torskeotolitter\standard'
+train_ds, valid_ds, test_ds = imageloader(
+    path, (128, 128), splits=(0.6, 0.2, 0.2), seed=123, mode='RGB')
 
 
 '''
 display training images
 '''
-
-class_names = dataset.class_names
+images = train_ds['images'][:9]
+labels = train_ds['labels']
 
 plt.figure(figsize=(10, 10))
-for images, labels in train_ds.take(1):
-  for i in range(9):
+
+for i in range(9):
     ax = plt.subplot(3, 3, i + 1)
-    plt.imshow(images[i].numpy().astype("uint8"), 'gray')
-    plt.title(class_names[labels[i]])
+    plt.imshow(images[i], 'gray')
+    plt.title(train_ds.class_names[labels[i]])
     plt.axis("off")
-    
-'''
-data augmentation
-'''  
-data_augmentation = tf.keras.Sequential([
-  tf.keras.layers.experimental.preprocessing.RandomFlip('horizontal'),
-  tf.keras.layers.experimental.preprocessing.RandomRotation(0.2),
-])
 
-for image, _ in train_ds.take(1):
-  plt.figure(figsize=(10, 10))
-  first_image = image[0]
-  for i in range(9):
-    ax = plt.subplot(3, 3, i + 1)
-    augmented_image = data_augmentation(tf.expand_dims(first_image, 0))
-    plt.imshow(augmented_image[0] / 255, 'gray')
-    plt.axis('off')
-    
-    
-'''
-rescale images
-'''
-preprocess_input = tf.keras.applications.mobilenet_v2.preprocess_input
-
-
+        
 '''
 load MobileNet
 '''
 # Create the base model from the pre-trained model MobileNet V2
-BATCH_SIZE = 32
-IMG_SIZE = (160, 160)
-
+IMG_SIZE = (128, 128)
 IMG_SHAPE = IMG_SIZE + (3,)
+
 base_model = tf.keras.applications.MobileNetV2(input_shape=IMG_SHAPE,
                                                include_top=False,
                                                weights='imagenet')
 
-image_batch, label_batch = next(iter(train_ds))
-feature_batch = base_model(image_batch)
-print(feature_batch.shape)
-
 base_model.trainable = False
 
 # Let's take a look to see how many layers are in the base model
-#print("Number of layers in the base model: ", len(base_model.layers))
+print("Number of layers in the base model: ", len(base_model.layers))
 
 # Fine-tune from this layer onwards
-#fine_tune_at = 140
+fine_tune_at = 140
 
 # Freeze all the layers before the `fine_tune_at` layer
-#for layer in base_model.layers[:fine_tune_at]:
-#  layer.trainable =  False
+for layer in base_model.layers[:fine_tune_at]:
+    layer.trainable = False
 
 
-
-global_average_layer = tf.keras.layers.GlobalAveragePooling2D()
-feature_batch_average = global_average_layer(feature_batch)
-print(feature_batch_average.shape)
-
-prediction_layer = tf.keras.layers.Dense(1)
-prediction_batch = prediction_layer(feature_batch_average)
-print(prediction_batch.shape)
-
-inputs = tf.keras.Input(shape=(160, 160, 3))
-#x = data_augmentation(inputs)
+'''
+define model
+'''
+inputs = tf.keras.Input(shape=IMG_SHAPE)
 x = preprocess_input(inputs)
 x = base_model(x, training=False)
-x = global_average_layer(x)
-x = tf.keras.layers.Dropout(0.2)(x)
-outputs = prediction_layer(x)
+x = GlobalAveragePooling2D()(x)
+x = Dropout(0.2)(x)
+outputs = Dense(1)(x)
+
 model = tf.keras.Model(inputs, outputs)
 
-base_learning_rate = 0.001
-model.compile(optimizer=tf.keras.optimizers.Adam(lr=base_learning_rate),
+base_learning_rate = 1e-3
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=base_learning_rate),
               loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
               metrics=['accuracy'])
 
 model.summary()
 
 
-history = model.fit(train_ds,
-                    epochs=100,
-                    validation_data=valid_ds)
+'''
+fit model
+'''
+BATCH_SIZE = 32
+initial_epochs = 100
+
+x_tr = train_ds['images']
+y_tr = train_ds['labels']
+x_va = valid_ds['images']
+y_va = valid_ds['labels']
+
+
+history = model.fit(x_tr,
+                    y_tr,
+                    batch_size=BATCH_SIZE,
+                    epochs=initial_epochs,
+                    validation_data=(x_va, y_va))
 
 acc = history.history['accuracy']
 val_acc = history.history['val_accuracy']
@@ -141,12 +123,29 @@ plt.title('Training and Validation Loss')
 plt.xlabel('epoch')
 plt.show()
 
-initial_epochs=10
 
-history_fine = model.fit(train_ds,
-                    epochs=100,
-                    validation_data=valid_ds)
+'''
+fine tune model
+'''
+# Unfreeze the base_model. Note that it keeps running in inference mode
+# since we passed `training=False` when calling it. This means that
+# the batchnorm layers will not update their batch statistics.
+# This prevents the batchnorm layers from undoing all the training
+# we've done so far.
+base_model.trainable = True
+model.summary()
 
+model.compile(
+    optimizer=tf.keras.optimizers.Adam(1e-5),  # Low learning rate
+    loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
+    metrics=['accuracy'],
+)
+
+history_fine = model.fit(x_tr,
+                         y_tr,
+                         batch_size=BATCH_SIZE,
+                         epochs=100,
+                         validation_data=(x_va, y_va))
 
 acc += history_fine.history['accuracy']
 val_acc += history_fine.history['val_accuracy']

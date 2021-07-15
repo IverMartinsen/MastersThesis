@@ -11,15 +11,17 @@ import os
 from PIL import Image
 
 class ImageGenerator:
-    def __init__(self, file_paths, image_size, class_names):
+    def __init__(self, file_paths, image_size, class_names, mode):
         self.file_paths = file_paths
         self.image_size = image_size
         self.class_names = class_names
+        self.mode = mode
     
     def __getitem__(self, key):
         labels = np.array([get_label(file_path, self.class_names) for 
                   file_path in self.file_paths])
-        images = np.moveaxis(np.dstack([np.array(Image.open(file_path).resize(self.image_size)).astype(float) for file_path in self.file_paths]), -1, 0)
+        images = np.stack(
+                [np.array(Image.open(file_path).convert(self.mode).resize(self.image_size)).astype(float) for file_path in self.file_paths])
         filenames = [file_path.split(os.path.sep)[-1] for file_path in self.file_paths]
         
         test = {'images':images, 'labels':labels, 'filenames':filenames}
@@ -83,7 +85,7 @@ def process_path(file_path, image_size, class_names):
     
     return img, label, filename
 
-def imageloader(file_path, image_size, splits=1, seed=None):
+def imageloader(file_path, image_size, splits=1, seed=None, mode='L'):
     '''
     Loads images from path to class folders.
 
@@ -112,6 +114,8 @@ def imageloader(file_path, image_size, splits=1, seed=None):
         Dataset of images.
 
     '''
+    
+    assert os.path.isdir(file_path), f"{file_path} does not exist"
     
     filetype='jpg'
     
@@ -158,20 +162,38 @@ def imageloader(file_path, image_size, splits=1, seed=None):
         
         class_size = len(files_by_class[class_name])
         list_class = files_by_class[class_name]
-
+        
+        subset_idx = np.round(np.cumsum(class_size*np.array(splits))).astype('int')
+        
         for j in range(num_subsets):
             
-            subset_size = class_size*splits[j]
+            #subset_size = class_size*splits[j]
             
+            #if i == 0:
+            #    subsets[j] = list_class[
+            #        int(np.round(subset_size*j)):
+            #            int(np.round(subset_size*(j + 1)))]
+
             if i == 0:
-                subsets[j] = list_class[
-                    int(np.round(subset_size*j)):
-                        int(np.round(subset_size*(j + 1)))]
+                if j == 0:
+                    subsets[j] = list_class[:subset_idx[j]]
+                else:
+                    subsets[j] = list_class[subset_idx[j-1]:subset_idx[j]]
+
+            #else:
+            #    subsets[j] = np.concatenate((subsets[j],
+            #        list_class[
+            #            int(np.round(subset_size*j)):
+            #                int(np.round(subset_size*(j + 1)))]))
+
             else:
-                subsets[j] = np.concatenate((subsets[j],
-                    list_class[
-                        int(np.round(subset_size*j)):
-                            int(np.round(subset_size*(j + 1)))]))
+                if j == 0:
+                    subsets[j] = np.concatenate(
+                        (subsets[j], list_class[:subset_idx[j]]))
+    
+                else:
+                    subsets[j] = np.concatenate(
+                        (subsets[j], list_class[subset_idx[j-1]:subset_idx[j]]))
     
     # print number of images in splits
     print('----------------------------')
@@ -189,6 +211,6 @@ def imageloader(file_path, image_size, splits=1, seed=None):
         
         rng.shuffle(subsets[j])        
         
-        subsets[j] = ImageGenerator(subsets[j], image_size, class_names)  
+        subsets[j] = ImageGenerator(subsets[j], image_size, class_names, mode)  
             
     return tuple(subsets.values())
