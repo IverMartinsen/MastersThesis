@@ -11,6 +11,7 @@ from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2 as cv
+from image_tools import countour_img
 
 # import and normalize image
 path = (r'C:\Users\iverm\Google Drive\Masteroppgave' + 
@@ -41,3 +42,5 @@ ax1.axis('off')
 ax2.imshow(thresholded, 'gray')
 ax2.set_title('Thresholded image')
 ax2.axis('off')
+
+
