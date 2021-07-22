@@ -11,7 +11,7 @@ from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2 as cv
-from image_tools import contour_img
+from image_tools import contour_img, chain_code
 
 # import and normalize image
 path = (r'C:\Users\iverm\Google Drive\Masteroppgave' + 
@@ -55,15 +55,87 @@ ax2.imshow(boundary, 'gray')
 ax2.set_title('Object boundary')
 ax2.axis('off')
 
-diff = np.vstack((points[1:], points[:1])) - points
+# construct a freeman chain of the contour pixels
+code = chain_code(points)
 
-V = np.zeros(diff.shape[0])
+delta_t = 1 + ((np.sqrt(2) - 1) / 2)*(1 - (-1)**code)
+t = np.cumsum(delta_t)
+t_min = np.concatenate(([0], t[:-1]))
+T = t[-1]
+delta_y = np.sign(4 - code) * np.sign(code)
+delta_x = np.sign(6 - code) * np.sign(2 - code)
 
-V[np.where(np.all(diff == [+0, +1], axis = 1))] = 0
-V[np.where(np.all(diff == [-1, +1], axis = 1))] = 1
-V[np.where(np.all(diff == [-1, +0], axis = 1))] = 2
-V[np.where(np.all(diff == [-1, -1], axis = 1))] = 3
-V[np.where(np.all(diff == [+0, -1], axis = 1))] = 4
-V[np.where(np.all(diff == [+1, -1], axis = 1))] = 5
-V[np.where(np.all(diff == [+1, +0], axis = 1))] = 6
-V[np.where(np.all(diff == [+1, +1], axis = 1))] = 7
+n = 1
+
+a = lambda n: T * np.sum(
+    delta_x * (
+        np.cos(2*n*np.pi*t/T) - np.cos(2*n*np.pi*t_min/T)) / delta_t) / (
+            2*n**2*np.pi**2)
+
+b = lambda n: T * np.sum(
+    delta_x * (
+        np.sin(2*n*np.pi*t/T) - np.sin(2*n*np.pi*t_min/T)) / delta_t) / (
+            2*n**2*np.pi**2)
+
+c = lambda n: T * np.sum(
+    delta_y * (
+        np.cos(2*n*np.pi*t/T) - np.cos(2*n*np.pi*t_min/T)) / delta_t) / (
+            2*n**2*np.pi**2)
+
+d = lambda n: T * np.sum(
+    delta_y * (
+        np.sin(2*n*np.pi*t/T) - np.sin(2*n*np.pi*t_min/T)) / delta_t) / (
+            2*n**2*np.pi**2)
+
+epsilon = np.cumsum(
+    np.concatenate(([0], delta_x[:-1]))) - delta_x *np.cumsum(t_min) / delta_t            
+delta = np.cumsum(
+    np.concatenate(([0], delta_y[:-1]))) - delta_y *np.cumsum(t_min) / delta_t            
+
+A0 = np.sum(delta_x * (t**2 - t_min**2) / (2*delta_t) + epsilon * (t - t_min)) / T
+C0 = np.sum(delta_y * (t**2 - t_min**2) / (2*delta_t) + delta * (t - t_min)) / T
+
+
+x_terms = lambda n: a(n) * np.cos(2*n*np.pi*t / T) + b(n) * np.sin(2*n*np.pi*t / T)
+y_terms = lambda n: c(n) * np.cos(2*n*np.pi*t / T) + d(n) * np.sin(2*n*np.pi*t / T)
+
+def x(n):
+    output = A0
+    for i in range(1, n + 1):
+        output += x_terms(i)
+    return output
+
+def y(n):
+    output = C0
+    for i in range(1, n + 1):
+        output += y_terms(i)
+    return output
+
+
+n = [1, 2, 5, 10, 20, 100]
+
+fig, axes = plt.subplots(3, 3)
+
+
+
+
+for i, ax in enumerate(axes.flatten()):
+    if i == 0:
+        ax.imshow(image, 'gray')
+        ax.set_title('Original image')
+        ax.axis('off')
+    elif i == 1:
+        ax.imshow(thresholded, 'gray')
+        ax.set_title('Binary image')
+        ax.axis('off')
+    elif i == 2:
+        ax.imshow(boundary, 'gray')
+        ax.set_title('Contour image')
+        ax.axis('off')
+    else:
+        ax.plot(x(n[i-3]), y(n[i-3]))
+        ax.set_aspect('equal')
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_title(f'{n[i-3]} Fourier coefficients')
+        ax.axis('off')

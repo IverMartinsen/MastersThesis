@@ -74,3 +74,37 @@ def contour_img(img, target):
     boundary_img[boundary_points[:, 0], boundary_points[:, 1]] = 1
     
     return boundary_points, boundary_img
+
+
+
+def chain_code(points):
+    '''
+    Returns the Freeman chain code from an n x 2 array of
+    boundary points.
+
+    Parameters
+    ----------
+    points : numpy.ndarray
+        Boundary points.
+
+    Returns
+    -------
+    V : numpy.ndarray
+        Chain code sequence.
+
+    '''
+    
+    diff = np.vstack((points[1:], points[:1])) - points
+
+    V = np.zeros(diff.shape[0])
+    
+    V[np.where(np.all(diff == [+0, +1], axis = 1))] = 0
+    V[np.where(np.all(diff == [-1, +1], axis = 1))] = 1
+    V[np.where(np.all(diff == [-1, +0], axis = 1))] = 2
+    V[np.where(np.all(diff == [-1, -1], axis = 1))] = 3
+    V[np.where(np.all(diff == [+0, -1], axis = 1))] = 4
+    V[np.where(np.all(diff == [+1, -1], axis = 1))] = 5
+    V[np.where(np.all(diff == [+1, +0], axis = 1))] = 6
+    V[np.where(np.all(diff == [+1, +1], axis = 1))] = 7
+    
+    return V
