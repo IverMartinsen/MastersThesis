@@ -8,7 +8,7 @@ Created on Thu Jul 22 15:19:23 2021
 """
 import numpy as np
 
-def countour_img(img, target):
+def contour_img(img, target):
     '''
     Returns boundary image from a binary input image.
     Based on the Moore Boundary Tracing Algorithm.
