@@ -22,8 +22,8 @@ def contour_img(img, target):
 
     Returns
     -------
-    boundary_img : numpy.ndarray
-        Boundary image.
+    boundary_points, boundary_img : tuple
+        Boundary points and boundary image.
 
     '''    
     
@@ -47,7 +47,7 @@ def contour_img(img, target):
         try:
             boundary_points = np.vstack((boundary_points, b))
         except NameError:
-            boundary_points = b
+            boundary_points = b0
         
         # starting position for iterating over neighbours
         start = np.where(np.all(neighbours == (c - b), axis = 1))[0][0]
@@ -73,4 +73,4 @@ def contour_img(img, target):
     boundary_img = np.zeros_like(img)
     boundary_img[boundary_points[:, 0], boundary_points[:, 1]] = 1
     
-    return boundary_img
+    return boundary_points, boundary_img
