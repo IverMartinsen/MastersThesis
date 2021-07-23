@@ -38,7 +38,8 @@ def confusion_matrix(
     '''
     
     # computes an m-by-m array
-    conf_mat = tf.math.confusion_matrix(labels, predictions).numpy()
+    conf_mat = tf.math.confusion_matrix(
+        labels.flatten(), predictions.flatten()).numpy()
     
     # m-by-m array to hold accuracies
     conf_norm = np.zeros_like(conf_mat, dtype=float)
