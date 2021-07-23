@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """
+Functions used for visualization of the tensorflow DL models.
+
 Created on Fri May 21 12:42:52 2021
 
 @author: iverm
