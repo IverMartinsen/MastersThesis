@@ -7,6 +7,8 @@ from dataloader import dataloader
 from custom_callbacks import TestAccuracy
 from guided_backprop import build_model, compute_grads
 from matplotlib import cm
+from model_functional import build_model
+
 
 
 '''
@@ -34,21 +36,22 @@ valid_ds = tf.keras.preprocessing.image_dataset_from_directory(
     color_mode='grayscale',
     batch_size=32)
 
+
+
 '''
 Train model
 '''
-tf.keras.backend.clear_session()
-del model
-from model_functional import build_model
 model = build_model()
 
-callbacks = [tf.keras.callbacks.EarlyStopping(
-    patience=20, restore_best_weights=True)]
+callbacks = [
+    tf.keras.callbacks.EarlyStopping(patience=20, restore_best_weights=True)]
 
 history = model.fit(train_ds,
                     epochs=1000,
                     validation_data=valid_ds,
                     callbacks=callbacks)
+
+
             
 '''
 Plot loss
@@ -56,12 +59,15 @@ Plot loss
 plt.figure(figsize=(12, 8))
 plt.plot(history.history['loss'], label='Training loss')
 plt.plot(history.history['val_loss'], label='Validation loss')
-plt.plot(np.argmin(history.history['val_loss']), 
-         np.min(history.history['val_loss']),
-         marker='o',
-         label='Minimum validation loss')
+plt.plot(
+    np.argmin(history.history['val_loss']), 
+    np.min(history.history['val_loss']),
+    marker='o',
+    label='Minimum validation loss')
 plt.legend()
 plt.xlabel('epochs')
+
+
 
 '''
 Plot accuracy
@@ -69,27 +75,28 @@ Plot accuracy
 plt.figure(figsize=(12, 8))
 plt.plot(history.history['binary_accuracy'], label='Training accuracy')
 plt.plot(history.history['val_binary_accuracy'], label='Validation accuracy')
-#plt.plot(history.history['test_binary_accuracy'], label='Test accuracy')
-plt.plot(np.argmin(history.history['val_loss']), 
-         history.history['val_binary_accuracy'][
-             np.argmin(history.history['val_loss'])],
-         marker='o',
-         label='Minimum validation loss')
+plt.plot(
+    np.argmin(history.history['val_loss']),
+    history.history[
+        'val_binary_accuracy'][np.argmin(history.history['val_loss'])],
+    marker='o',
+    label='Minimum validation loss')
 plt.legend()
 plt.xlabel('epochs')
+
+
 
 '''
 Evaluate on test set
 '''
 
-model.evaluate(valid_ds)
-'''    
-labels = model.predict(sets[0].batch(567)).round()
 
 confmat = ConfMat(np.concatenate([y for x, y in test_ds], axis=0), model.get_labels(test_ds))
 confmat.evaluate()
 confmat.show([data.get_name(i) for i in range(data.class_count)])
 
+
+'''
 '''''''
 Save model
 '''''''
