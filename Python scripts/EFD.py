@@ -58,15 +58,22 @@ ax2.axis('off')
 # construct a freeman chain of the contour pixels
 code = chain_code(points)
 
+# Time used for each step in the Freeman chain.
+# Eqs. given by Giardina & Kuhl (1982).
 delta_t = 1 + ((np.sqrt(2) - 1) / 2)*(1 - (-1)**code)
-t = np.cumsum(delta_t)
-t_min = np.concatenate(([0], t[:-1]))
-T = t[-1]
-delta_y = np.sign(4 - code) * np.sign(code)
+
+t = np.cumsum(delta_t)                # accumulated time vector
+t_min = np.concatenate(([0], t[:-1])) # shifted time vector
+T = t[-1]                             # fundamental period
+
+# Changes in projections along the x and y axis with
+# eqs. given by Giardina & Kuhl (1982).
+# Here the x and y axis are oriented by the standard cartesian system.
 delta_x = np.sign(6 - code) * np.sign(2 - code)
+delta_y = np.sign(4 - code) * np.sign(code)
 
-n = 1
-
+# Functions for computing the Fourier coefficents for x and y
+# with eqs. given by Giardina & Kuhl (1982).
 a = lambda n: T * np.sum(
     delta_x * (
         np.cos(2*n*np.pi*t/T) - np.cos(2*n*np.pi*t_min/T)) / delta_t) / (
@@ -87,18 +94,20 @@ d = lambda n: T * np.sum(
         np.sin(2*n*np.pi*t/T) - np.sin(2*n*np.pi*t_min/T)) / delta_t) / (
             2*n**2*np.pi**2)
 
+# Computing the DC components for x and y using eqs. from Giardina & Kuhl.            
 epsilon = np.cumsum(
     np.concatenate(([0], delta_x[:-1]))) - delta_x *np.cumsum(t_min) / delta_t            
 delta = np.cumsum(
     np.concatenate(([0], delta_y[:-1]))) - delta_y *np.cumsum(t_min) / delta_t            
 
-A0 = np.sum(delta_x * (t**2 - t_min**2) / (2*delta_t) + epsilon * (t - t_min)) / T
-C0 = np.sum(delta_y * (t**2 - t_min**2) / (2*delta_t) + delta * (t - t_min)) / T
+A0 = np.sum(delta_x*(t**2-t_min**2)/(2*delta_t)+epsilon*(t-t_min))/T
+C0 = np.sum(delta_y*(t**2-t_min**2)/(2*delta_t)+delta*(t-t_min))/T
 
+# Functions returning x(t) and y(t) for the nth harmonic.
+x_terms = lambda n: a(n)*np.cos(2*n*np.pi*t/T)+b(n)*np.sin(2*n*np.pi*t/T)
+y_terms = lambda n: c(n)*np.cos(2*n*np.pi*t/T)+d(n)*np.sin(2*n*np.pi*t/T)
 
-x_terms = lambda n: a(n) * np.cos(2*n*np.pi*t / T) + b(n) * np.sin(2*n*np.pi*t / T)
-y_terms = lambda n: c(n) * np.cos(2*n*np.pi*t / T) + d(n) * np.sin(2*n*np.pi*t / T)
-
+# Functions returning the total sum of x(t) and y(t) given n harmonics. 
 def x(n):
     output = A0
     for i in range(1, n + 1):
@@ -111,13 +120,11 @@ def y(n):
         output += y_terms(i)
     return output
 
-
+# Choices of n to display
 n = [1, 2, 5, 10, 20, 100]
 
+# plot contour approximations
 fig, axes = plt.subplots(3, 3)
-
-
-
 
 for i, ax in enumerate(axes.flatten()):
     if i == 0:
