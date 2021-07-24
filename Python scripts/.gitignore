@@ -1,4 +1,5 @@
 *
 !*.py
 !.gitignore
-!/scripts/
+!scripts/
+!test.txt
