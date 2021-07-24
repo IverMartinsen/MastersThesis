@@ -12,84 +12,91 @@ import tensorflow as tf
 from imageloader import imageloader
 
 from tensorflow.keras.layers import Dense, Flatten, Conv2D, MaxPool2D, ReLU
-from tensorflow.keras.layers import BatchNormalization, Dropout
-from tensorflow.keras.layers import Input, SeparableConv2D, GlobalAveragePooling2D
-
-from tensorflow.keras.layers.experimental.preprocessing import RandomFlip
-from tensorflow.keras.layers.experimental.preprocessing import RandomZoom
-from tensorflow.keras.layers.experimental.preprocessing import RandomRotation
+from tensorflow.keras.layers import BatchNormalization, Dropout, Input 
 from tensorflow.keras.layers.experimental.preprocessing import Rescaling
 
 
+
 def build_model():
+    '''
+    Function for building a new model for each trial.
+    '''
     L2 = tf.keras.regularizers.L2()
 
     inputs = Input(shape=(128, 128, 1))
     
-    #x = RandomZoom(0.2)(inputs)
-    #x = RandomRotation(0.2)(x)
-    #x = RandomFlip()(x)
-    
+    # preprocessing
     x = Rescaling(1./255)(inputs)
     
+    # conv block 1
     x = Conv2D(32, 3, padding='same', kernel_regularizer=L2)(x)
     x = BatchNormalization()(x)
     x = ReLU()(x)
-    
     x = MaxPool2D()(x)
     
+    # conv block 2
     x = Conv2D(32, 3, padding='same', kernel_regularizer=L2)(x)
     x = BatchNormalization()(x)
     x = ReLU()(x)
-    
     x = MaxPool2D()(x)
     
+    # conv block 3
     x = Conv2D(32, 3, padding='same', kernel_regularizer=L2)(x)
     x = BatchNormalization()(x)
     x = ReLU()(x)
-    
     x = MaxPool2D()(x)
     
     x = Flatten()(x)
+    
+    # dense layer 1
     x = Dense(64, kernel_regularizer=L2)(x)
-    #x = BatchNormalization()(x)
     x = ReLU()(x)
     x = Dropout(0.5)(x)
     
+    # dense layer 2
     x = Dense(64, kernel_regularizer=L2)(x)
-    #x = BatchNormalization()(x)
     x = ReLU()(x)
     
+    # output layer    
     outputs = Dense(1, activation='sigmoid')(x)
         
     model = tf.keras.Model(inputs=inputs, outputs=outputs)
     
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(
-            learning_rate=1e-3),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
         loss=tf.keras.losses.BinaryCrossentropy(),
         metrics=[tf.keras.metrics.BinaryAccuracy()])
     
     return model
 
 
+
+# turn off interactive plotting to avoid plots popping up during trials
 plt.ioff()
+
+
 
 '''
 Import images
 '''
-path = r'C:\Users\iverm\OneDrive\Desktop\Aktive prosjekter\Masteroppgave\Data\Torskeotolitter\standard'
+# path to image folder
+path = (r'C:\Users\iverm\OneDrive\Desktop\Aktive prosjekter\Masteroppgave' + 
+        '\Data\Torskeotolitter\standard')
 
+# use k splits of equal size
 k = 5
 sets = imageloader(path, (128, 128), 5, seed=123)
+
+
 
 '''
 Train model
 '''
-#sets = ['a', 'b', 'c', 'd', 'e']
+# path to folder where output images and results are stored
+destination = (r'C:\Users\iverm\OneDrive\Desktop\Aktive prosjekter\Masteroppgave' + 
+               '\Forsøk 14.06.2021')
 
-destination = r'C:\Users\iverm\OneDrive\Desktop\Aktive prosjekter\Masteroppgave\Forsøk 14.06.2021'
-
+# make a new folder where learning curves are stored
 folder_name = 'Learning curves'
 os.makedirs(destination + '\\' + folder_name, exist_ok=True)
 
