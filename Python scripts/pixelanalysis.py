@@ -24,6 +24,19 @@ def guided_relu(x):
 
 
 
+class GuidedReLU(tf.keras.layers.Layer):
+    '''
+    Guided ReLU activation layer to be used
+    if activation functions are applied as layers.
+    '''
+    def __init__(self):
+        super().__init__()
+    
+    def call(self, x):
+        return guided_relu(x)
+
+
+
 def build_model(trained_model):
     '''
     Returns model similar to input.
