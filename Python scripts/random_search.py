@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """
+Example of applying random search procedures to optimize hyperparameters.
+
 Created on Tue Jun 15 10:24:26 2021
 
 @author: iverm
@@ -12,12 +14,34 @@ import tensorflow as tf
 import kerastuner as kt
 
 def build_model(hp):
-    
+    '''
+    Model building function to be used with hyperparameters tuning.
+    Samples following hyperparameters:
+        L2 norm penalty
+        #convolution blocks
+        #filters for each block
+        #layers for each block
+        #dense layers
+        #neurons for each dense layer
+        dropout rate for the first dense layer
+        learning rate        
+
+    Parameters
+    ----------
+    hp : keras_tuner.HyperParameters
+        Hyperparameters container.
+
+    Returns
+    -------
+    model : tf.keras.Model
+        Compiled tensorflow model.
+
+    '''
     L2 = tf.keras.regularizers.L2(
         l2=hp.Float("l2_norm", 1e-5, 1e-1, sampling="log"))
     
     inputs = Input(shape=(128, 128, 1))
-
+    
     x = Rescaling(1./255)(inputs)
 
     for i in range(hp.Int("conv_blocks", 3, 5)):
@@ -51,8 +75,8 @@ def build_model(hp):
     model.compile(
         optimizer=tf.keras.optimizers.Adam(
             hp.Float("learning_rate", 1e-4, 1e-1, sampling="log")),
-            loss=tf.keras.losses.BinaryCrossentropy(),
-            metrics=[tf.keras.metrics.BinaryAccuracy()],
+        loss=tf.keras.losses.BinaryCrossentropy(),
+        metrics=[tf.keras.metrics.BinaryAccuracy()],
     )
     
     return model
@@ -90,7 +114,7 @@ tuner = kt.RandomSearch(
 # search for parameters
 tuner.search(
     train_ds, 
-    epochs=1000, 
+    epochs=100, 
     validation_data=valid_ds,
     callbacks = [tf.keras.callbacks.EarlyStopping(
         patience=20, restore_best_weights=True)])
