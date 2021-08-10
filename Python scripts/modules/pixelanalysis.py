@@ -115,6 +115,8 @@ def generate_path_inputs(baseline_img, input_img, m):
     4D tensor of step images.
 
     '''
+    if not len(baseline_img.shape) == len(input_img.shape) == 3:
+        raise Exception('Input images must have shape (W, H, C)') 
     alphas = np.linspace(0, 1, m)[:, np.newaxis, np.newaxis, np.newaxis]
     delta = np.expand_dims(input_img, 0) - np.expand_dims(baseline_img, 0)
     path_inputs = np.expand_dims(baseline_img, 0) + alphas * delta
