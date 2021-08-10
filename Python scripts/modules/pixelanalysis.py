@@ -7,6 +7,7 @@ Created on Fri May 21 12:42:52 2021
 @author: iverm
 """
 import tensorflow as tf
+import numpy as np
 from tensorflow.keras.models import Model
 
 
@@ -92,4 +93,30 @@ def build_extractor(model, layers):
 
     layer_outputs = [layer.output for layer in [model.layers[i] for i in layers]]
 
-    return Model(inputs = model.input, outputs = layer_outputs)    
+    return Model(inputs = model.input, outputs = layer_outputs)
+
+
+
+def generate_path_inputs(baseline_img, input_img, m):
+    '''
+    Generates m interpolated images between input and baseline image.
+
+    Parameters
+    ----------
+    baseline_img : numpy.ndarray
+        3D tensor of floats.
+    input_img : numpy.ndarray
+        3D tensor of floats.
+    m : int
+        Number of steps.
+
+    Returns path_inputs
+    -------
+    4D tensor of step images.
+
+    '''
+    alphas = np.linspace(0, 1, m)[:, np.newaxis, np.newaxis, np.newaxis]
+    delta = input_img[np.newaxis, :] - baseline_img[np.newaxis, :]
+    path_inputs = baseline_img[np.newaxis, :] + alphas * delta
+    
+    return path_inputs
