@@ -108,7 +108,7 @@ def generate_path_inputs(baseline_img, input_img, m):
     input_img : numpy.ndarray
         3D tensor of floats.
     m : int
-        Number of steps.
+        Number of path images including both endpoints.
 
     Returns path_inputs
     -------
@@ -116,7 +116,7 @@ def generate_path_inputs(baseline_img, input_img, m):
 
     '''
     alphas = np.linspace(0, 1, m)[:, np.newaxis, np.newaxis, np.newaxis]
-    delta = input_img[np.newaxis, :] - baseline_img[np.newaxis, :]
-    path_inputs = baseline_img[np.newaxis, :] + alphas * delta
+    delta = np.expand_dims(input_img, 0) - np.expand_dims(baseline_img, 0)
+    path_inputs = np.expand_dims(baseline_img, 0) + alphas * delta
     
     return path_inputs
