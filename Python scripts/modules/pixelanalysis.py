@@ -112,7 +112,7 @@ def generate_path_inputs(baseline_img, input_img, m):
 
     Returns path_inputs
     -------
-    4D tensor of step images.
+    4D tf.tensor of step images.
 
     '''
     if not len(baseline_img.shape) == len(input_img.shape) == 3:
@@ -121,4 +121,4 @@ def generate_path_inputs(baseline_img, input_img, m):
     delta = np.expand_dims(input_img, 0) - np.expand_dims(baseline_img, 0)
     path_inputs = np.expand_dims(baseline_img, 0) + alphas * delta
     
-    return path_inputs
+    return tf.convert_to_tensor(path_inputs)
