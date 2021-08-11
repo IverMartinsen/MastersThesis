@@ -108,3 +108,16 @@ def chain_code(points):
     V[np.where(np.all(diff == [+1, +1], axis = 1))] = 7
     
     return V
+
+
+
+def normalize(img, lower=0, upper=1):
+    '''
+    Normalize input image to the given range.
+    Assumes equal scaling for all images in input tensor.
+    Assumes RGB or grayscale format on input.
+    '''
+    return (img - lower)*(upper - lower)/(np.max(img) - np.min(img)) + lower
+    
+    
+    
