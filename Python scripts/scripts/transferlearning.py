@@ -8,7 +8,7 @@ Created on Mon Jun 14 19:48:11 2021
 """
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from imageloader import imageloader
+from modules.imageloader import imageloader
 from tensorflow.keras.layers import GlobalAveragePooling2D, Dropout, Dense
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 

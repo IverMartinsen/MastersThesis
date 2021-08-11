@@ -9,11 +9,11 @@ import pathlib
 import numpy as np
 import os
 from PIL import Image
-from image_tools import normalize
+from modules.image_tools import normalize
 
 class ImageGenerator:
     def __init__(
-            self, file_paths, image_size, class_names, mode, normalize=True):
+            self, file_paths, image_size, class_names, mode, normalize=False):
         self.file_paths = file_paths
         self.image_size = image_size
         self.class_names = class_names
