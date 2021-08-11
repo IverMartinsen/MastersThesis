@@ -25,7 +25,7 @@ train_ds, valid_ds, test_ds = imageloader(
 display training images
 '''
 images = train_ds['images'][:9]
-labels = train_ds['labels']
+labels = train_ds['labels'][:9]
 
 plt.figure(figsize=(10, 10))
 
@@ -68,13 +68,13 @@ x = preprocess_input(inputs)
 x = base_model(x, training=False)
 x = GlobalAveragePooling2D()(x)
 x = Dropout(0.2)(x)
-outputs = Dense(1)(x)
+outputs = Dense(3, activation='softmax')(x)
 
 model = tf.keras.Model(inputs, outputs)
 
 base_learning_rate = 1e-3
 model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=base_learning_rate),
-              loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
+              loss=tf.keras.losses.SparseCategoricalCrossentropy(),
               metrics=['accuracy'])
 
 model.summary()

@@ -146,8 +146,9 @@ def integrate_grads(grads):
     '''
     Compute integrated gradients by Composite Simpsons rule.
     Total number of gradient images should be an odd number.
+    Assumes that length of interval is 1.
     '''
-    h = (grads[-1] - grads[0]) / (np.shape(grads)[0] - 1)
+    h = 1 / (np.shape(grads)[0] - 1)
     sum1 = 4*np.sum(grads[1::2], axis=0)
     sum2 = 2*np.sum(grads[2:-2:2], axis=0)
     return (h / 3) * (grads[0] + grads[-1] + sum1 + sum2)
