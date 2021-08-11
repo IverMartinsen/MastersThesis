@@ -9,19 +9,24 @@ import pathlib
 import numpy as np
 import os
 from PIL import Image
+from image_tools import normalize
 
 class ImageGenerator:
-    def __init__(self, file_paths, image_size, class_names, mode):
+    def __init__(
+            self, file_paths, image_size, class_names, mode, normalize=True):
         self.file_paths = file_paths
         self.image_size = image_size
         self.class_names = class_names
         self.mode = mode
+        self.normalize = normalize
     
     def __getitem__(self, key):
         labels = np.array([get_label(file_path, self.class_names) for 
                   file_path in self.file_paths])
         images = np.stack(
                 [np.array(Image.open(file_path).convert(self.mode).resize(self.image_size)).astype(float) for file_path in self.file_paths])
+        if self.normalize:
+            images = normalize(images)    
         filenames = [file_path.split(os.path.sep)[-1] for file_path in self.file_paths]
         
         test = {'images':images, 'labels':labels, 'filenames':filenames}
