@@ -117,7 +117,7 @@ def normalize(img, lower=0, upper=1):
     Assumes equal scaling for all images in input tensor.
     Assumes RGB or grayscale format on input.
     '''
-    return (img - lower)*(upper - lower)/(np.max(img) - np.min(img)) + lower
+    return (img-np.min(img))*(upper-lower)/(np.max(img)-np.min(img))+lower
     
     
     
