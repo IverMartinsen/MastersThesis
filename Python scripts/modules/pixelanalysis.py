@@ -124,7 +124,8 @@ def generate_path_inputs(baseline_img, input_img, m):
     input_img : numpy.ndarray
         3D tensor of floats.
     m : int
-        Number of path images including both endpoints.
+        Number of path images excluding one endpoint.
+        Should be an even number.
 
     Returns path_inputs
     -------
@@ -133,8 +134,20 @@ def generate_path_inputs(baseline_img, input_img, m):
     '''
     if not len(baseline_img.shape) == len(input_img.shape) == 3:
         raise Exception('Input images must have shape (W, H, C)') 
-    alphas = np.linspace(0, 1, m)[:, np.newaxis, np.newaxis, np.newaxis]
+    alphas = np.linspace(0, 1, m + 1)[:, np.newaxis, np.newaxis, np.newaxis]
     delta = np.expand_dims(input_img, 0) - np.expand_dims(baseline_img, 0)
     path_inputs = np.expand_dims(baseline_img, 0) + alphas * delta
     
     return tf.convert_to_tensor(path_inputs)
+
+
+
+def integrate_grads(grads):
+    '''
+    Compute integrated gradients by Composite Simpsons rule.
+    Total number of gradient images should be an odd number.
+    '''
+    h = (grads[-1] - grads[0]) / (np.shape(grads)[0] - 1)
+    sum1 = 4*np.sum(grads[1::2], axis=0)
+    sum2 = 2*np.sum(grads[2:-2:2], axis=0)
+    return (h / 3) * (grads[0] + grads[-1] + sum1 + sum2)
