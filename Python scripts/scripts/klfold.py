@@ -94,7 +94,7 @@ Train model
 '''
 # path to folder where output images and results are stored
 destination = (r'C:\Users\iverm\OneDrive\Desktop\Aktive prosjekter\Masteroppgave' + 
-               '\Forsøk 14.06.2021')
+               '\Forsøk 12.08.2021')
 
 # make a new folder where learning curves are stored
 folder_name = 'Learning curves'
