@@ -110,8 +110,9 @@ def imageloader(file_path, image_size, splits=1, seed=None, mode='L'):
     keep_aspect : bool, optional
         If aspect ratio should be kept during resizing.
         The default is False.
-    batch_size : int, optional
-        Batch size. The default is 32.
+    mode : str
+        The requested mode. 
+        Use L for grayscale, RGB for color. The default is L.
 
     Returns
     -------
