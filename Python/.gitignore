@@ -1,0 +1,7 @@
+*
+!*.py
+!.gitignore
+!scripts/
+!modules/
+!Python/
+!R/
