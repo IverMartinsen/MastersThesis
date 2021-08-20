@@ -133,13 +133,22 @@ def generate_path_inputs(baseline_img, input_img, m):
 
 
 
-def integrate_grads(grads):
+def integral_approximation(gradients):
     '''
-    Compute integrated gradients by Composite Simpsons rule.
-    Total number of gradient images should be an odd number.
-    Assumes that length of interval is 1.
+    Approximate integration of input using Riemann sums
+    and the trapezoidal rule.
+
+    Parameters
+    ----------
+    gradients : tf.Tensor
+        Can have any shape.
+
+    Returns
+    -------
+    integrated_gradients : tf.Tensor
+        Shape as input.
+
     '''
-    h = 1 / (np.shape(grads)[0] - 1)
-    sum1 = 4*np.sum(grads[1::2], axis=0)
-    sum2 = 2*np.sum(grads[2:-2:2], axis=0)
-    return (h / 3) * (grads[0] + grads[-1] + sum1 + sum2)
+    grads = (gradients[:-1] + gradients[1:]) / tf.constant(2.0, dtype=tf.float64)
+    integrated_gradients = tf.math.reduce_mean(grads, axis=0)
+    return integrated_gradients
