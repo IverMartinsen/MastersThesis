@@ -196,3 +196,13 @@ def integrated_gradients(
     integrated_gradients = (image - baseline) * avg_gradients
 
     return integrated_gradients
+
+
+
+def ig_error(baseline, image, integrated_gradients):
+    '''
+    Returns percentage relative error for the integrated_gradients.
+    '''
+    aim = tf.math.abs(model(image) - model(baseline))
+    result = tf.math.reduce_sum(integrated_gradients)
+    return 100 * tf.math.abs(result - aim) / aim
