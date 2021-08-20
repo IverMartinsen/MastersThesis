@@ -104,7 +104,7 @@ def build_extractor(model, layers):
 
 
 
-def generate_path_inputs(baseline_img, input_img, m):
+def generate_path_inputs(baseline_img, input_img, alphas):
     '''
     Generates m interpolated images between input and baseline image.
 
@@ -114,10 +114,9 @@ def generate_path_inputs(baseline_img, input_img, m):
         3D tensor of floats.
     input_img : numpy.ndarray
         3D tensor of floats.
-    m : int
-        Number of path images excluding one endpoint.
-        Should be an even number.
-
+    alphas : numpy.ndarray
+        Sequence of alpha values.    
+    
     Returns path_inputs
     -------
     4D tf.tensor of step images.
@@ -125,7 +124,6 @@ def generate_path_inputs(baseline_img, input_img, m):
     '''
     if not len(baseline_img.shape) == len(input_img.shape) == 3:
         raise Exception('Input images must have shape (W, H, C)') 
-    alphas = np.linspace(0, 1, m + 1)[:, np.newaxis, np.newaxis, np.newaxis]
     delta = np.expand_dims(input_img, 0) - np.expand_dims(baseline_img, 0)
     path_inputs = np.expand_dims(baseline_img, 0) + alphas * delta
     
@@ -151,4 +149,50 @@ def integral_approximation(gradients):
     '''
     grads = (gradients[:-1] + gradients[1:]) / tf.constant(2.0, dtype=tf.float64)
     integrated_gradients = tf.math.reduce_mean(grads, axis=0)
+    return integrated_gradients
+
+
+
+@tf.function
+def integrated_gradients(
+        baseline, image, target_class_idx, m_steps=50, batch_size=32):
+    
+    
+    # Generate sequence of alphas.
+    alphas = tf.linspace(start=0.0, stop=1.0, num=m_steps+1)
+
+    # Initialize TensorArray outside loop to collect gradients.    
+    gradient_batches = tf.TensorArray(tf.float32, size=m_steps+1)
+
+    # Batch computations for speed, memory efficiency, and scaling.
+    # For each range in alphas, compute gradients.
+    for alpha in tf.range(0, len(alphas), batch_size):
+        from_ = alpha
+        to = tf.minimum(from_ + batch_size, len(alphas))
+        alpha_batch = alphas[from_:to]
+
+        # Generate interpolated images between baseline and input image.
+        interpolated_path_input_batch = generate_path_inputs(
+            baseline=baseline,
+            image=image,
+            alphas=alpha_batch)
+
+        # Compute gradients for model output wrt batch of interpolated images. 
+        gradient_batch = compute_gradients(
+            images=interpolated_path_input_batch,
+            target_class_idx=target_class_idx)
+
+        # Write batch indices and gradients into TensorArray.
+        gradient_batches = gradient_batches.scatter(
+            tf.range(from_, to), gradient_batch)    
+
+    # Stack path gradients together row-wise into single tensor.
+    total_gradients = gradient_batches.stack()
+
+    # Integral approximation through averaging gradients.
+    avg_gradients = integral_approximation(gradients=total_gradients)
+
+    # 5. Scale integrated gradients with respect to input.
+    integrated_gradients = (image - baseline) * avg_gradients
+
     return integrated_gradients
