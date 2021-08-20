@@ -16,7 +16,7 @@ from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 '''
 load images
 '''
-path = r'C:\Users\iverm\Google Drive\Masteroppgave\Data\Torskeotolitter\standard'
+path = r'C:\Users\iverm\Google Drive\Data\Torskeotolitter\standard'
 train_ds, valid_ds, test_ds = imageloader(
     path, (128, 128), splits=(0.6, 0.2, 0.2), seed=123, mode='RGB')
 

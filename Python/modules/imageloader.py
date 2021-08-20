@@ -90,7 +90,7 @@ def process_path(file_path, image_size, class_names):
     
     return img, label, filename
 
-def imageloader(file_path, image_size, splits=1, seed=None, mode='L'):
+def load_images(file_path, image_size, splits=1, seed=None, mode='L'):
     '''
     Loads images from path to class folders.
 
