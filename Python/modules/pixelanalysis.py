@@ -60,7 +60,7 @@ def build_model(trained_model):
 
 
 
-def compute_grads(inputs, model, num_class):
+def compute_gradients(inputs, model, num_class):
     '''
     Compute gradients of model predictions for class num_class wrt inputs.
 
@@ -79,20 +79,11 @@ def compute_grads(inputs, model, num_class):
         Gradient images of shape (num_images, height, width, channels).
 
     '''
-    if len(inputs.shape) == 4:
-        num_images = 'multiple'
-    else:
-        inputs = tf.expand_dims(inputs, 0)
-        num_images = 'single'
-    
     with tf.GradientTape() as tape:
         tape.watch(inputs)
         outputs = model(inputs)[:, num_class]
 
-    if num_images == 'multiple':
-        return tape.gradient(outputs, inputs)
-    else:
-        return tf.squeeze(tape.gradient(outputs, inputs), 0)
+    return tape.gradient(outputs, inputs)
     
     
 
