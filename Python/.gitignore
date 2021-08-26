@@ -1,4 +1,3 @@
-*
 !*.py
 !.gitignore
 !scripts/
@@ -6,3 +5,5 @@
 !Python/
 !R/
 !modules/analysis
+__pycache__/
+*.jpg
