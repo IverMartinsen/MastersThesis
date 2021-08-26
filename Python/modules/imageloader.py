@@ -1,7 +1,6 @@
 '''
 Contains:
     get_label()    : support function for dataloader 
-    process_path() : support function for dataloader
     dataloader()   : function for loading images from path
 '''
 
@@ -58,37 +57,7 @@ def get_label(file_path, class_names):
     # Integer encode the label
     return np.argmax(one_hot)
 
-def process_path(file_path, image_size, class_names):
-    '''
-    Takes an image file path and returns a tuple of (tensor, label)
-    with each image in tensor resized to image_size.
 
-    Parameters
-    ----------
-    file_path : str
-        Path to file.
-    image_size : tuple
-        (height, width).
-    channels : int
-        Number of channels.
-    keep_aspect : bool
-        Status of keeping aspect when resizing.
-    class_names : numpy.ndarray
-        Array of class names.
-
-    Returns
-    -------
-    img : Tensor
-        Image.
-    label : int
-        Class label.
-
-    '''
-    label = get_label(file_path, class_names)
-    img = np.array(Image.open(file_path).resize(image_size)).astype(float)
-    filename = file_path.split(os.path.sep)[-1]
-    
-    return img, label, filename
 
 def load_images(file_path, image_size, splits=1, seed=None, mode='L'):
     '''
@@ -101,23 +70,21 @@ def load_images(file_path, image_size, splits=1, seed=None, mode='L'):
         Must contain one subfolder with images for each class. 
     image_size : tuple
         Desired output size of images.
-    channels : int
-        Number of channels in input images.
     splits : int or list-like, optional
         If int, splits set into subsets of equal sizes.
         If list, splits set into subsets of sizes given by fractions in list.
         The default is 1.
-    keep_aspect : bool, optional
-        If aspect ratio should be kept during resizing.
-        The default is False.
+    seed : int, optional
+        Seed used for shuffling.
+        The default is None.
     mode : str
         The requested mode. 
         Use L for grayscale, RGB for color. The default is L.
 
     Returns
     -------
-    tf.data.Dataset
-        Dataset of images.
+    tuple
+        Tuple of ImageGenerator objects.
 
     '''
     
@@ -169,28 +136,16 @@ def load_images(file_path, image_size, splits=1, seed=None, mode='L'):
         class_size = len(files_by_class[class_name])
         list_class = files_by_class[class_name]
         
-        subset_idx = np.round(np.cumsum(class_size*np.array(splits))).astype('int')
+        subset_idx = np.round(
+            np.cumsum(class_size*np.array(splits))).astype('int')
         
         for j in range(num_subsets):
             
-            #subset_size = class_size*splits[j]
-            
-            #if i == 0:
-            #    subsets[j] = list_class[
-            #        int(np.round(subset_size*j)):
-            #            int(np.round(subset_size*(j + 1)))]
-
             if i == 0:
                 if j == 0:
                     subsets[j] = list_class[:subset_idx[j]]
                 else:
                     subsets[j] = list_class[subset_idx[j-1]:subset_idx[j]]
-
-            #else:
-            #    subsets[j] = np.concatenate((subsets[j],
-            #        list_class[
-            #            int(np.round(subset_size*j)):
-            #                int(np.round(subset_size*(j + 1)))]))
 
             else:
                 if j == 0:
@@ -199,7 +154,8 @@ def load_images(file_path, image_size, splits=1, seed=None, mode='L'):
     
                 else:
                     subsets[j] = np.concatenate(
-                        (subsets[j], list_class[subset_idx[j-1]:subset_idx[j]]))
+                        (subsets[j], 
+                         list_class[subset_idx[j-1]:subset_idx[j]]))
     
     # print number of images in splits
     print('----------------------------')
