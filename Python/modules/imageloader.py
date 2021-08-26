@@ -1,7 +1,5 @@
 '''
-Contains:
-    get_label()    : support function for dataloader 
-    dataloader()   : function for loading images from path
+Module for loading image from folder
 '''
 
 import pathlib
@@ -11,8 +9,11 @@ from PIL import Image
 from modules.image_tools import normalize
 
 class ImageGenerator:
+    
     def __init__(
-            self, file_paths, image_size, class_names, mode, normalize=False):
+            self, file_paths, image_size, class_names, mode, normalize=False
+            ):
+        
         self.file_paths = file_paths
         self.image_size = image_size
         self.class_names = class_names
@@ -20,16 +21,29 @@ class ImageGenerator:
         self.normalize = normalize
     
     def __getitem__(self, key):
+        
         labels = np.array([get_label(file_path, self.class_names) for 
                   file_path in self.file_paths])
+        
         images = np.stack(
-                [np.array(Image.open(file_path).convert(self.mode).resize(self.image_size)).astype(float) for file_path in self.file_paths])
+                [np.array(
+                    Image.open(
+                        file_path).convert(
+                            self.mode).resize(
+                                self.image_size)).astype(
+                                    float) for file_path in self.file_paths])
+        
         if self.normalize:
             images = normalize(images)    
-        filenames = [file_path.split(os.path.sep)[-1] for file_path in self.file_paths]
         
-        test = {'images':images, 'labels':labels, 'filenames':filenames}
-        return test[key]
+        filenames = [
+            file_path.split(os.path.sep)[-1] for file_path in self.file_paths
+            ]
+        
+        data = {'images':images, 'labels':labels, 'filenames':filenames}
+        
+        return data[key]
+
 
 
 def get_label(file_path, class_names):
