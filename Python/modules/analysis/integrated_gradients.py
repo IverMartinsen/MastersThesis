@@ -73,7 +73,8 @@ def integral_approximation(gradients):
         Shape as input.
 
     '''
-    grads = (gradients[:-1] + gradients[1:]) / tf.constant(2.0, dtype=tf.float64)
+    grads = (gradients[:-1] + gradients[1:]) / tf.constant(
+        2.0, dtype=gradients.dtype)
     integrated_gradients = tf.math.reduce_mean(grads, axis=0)
     return integrated_gradients
 
@@ -131,9 +132,9 @@ def integrated_gradients(model,
 
         # Compute gradients for model output wrt batch of interpolated images. 
         gradient_batch = compute_gradients(
-            model,
-            images=interpolated_path_input_batch,
-            target_class_idx=target_class_idx)
+            inputs=interpolated_path_input_batch,
+            model=model, 
+            num_class=target_class_idx)
 
         # Write batch indices and gradients into TensorArray.
         gradient_batches = gradient_batches.scatter(

@@ -34,9 +34,8 @@ class GuidedReLU(tf.keras.layers.Layer):
     Guided ReLU activation layer to be used
     if activation functions are applied as layers.
     '''
-    def __init__(self):
-        super().__init__()
-        self.name = 'GuidedReLU'
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
     
     def call(self, x):
         return guided_relu(x)
@@ -76,7 +75,7 @@ def build_gb_model_seq(trained_model):
 
 
 
-def build_gb_model_nonseq(model):
+def build_gb_model_nonseq(model, instance):
     '''
     Build model similar to input model where ReLU activation layers
     are replace by Guided ReLU activation layers.
@@ -85,16 +84,19 @@ def build_gb_model_nonseq(model):
     ----------
     model : tf.keras.models.Model
         Non-sequential keras model.
-
+    
+    instance : 
+        Layer subclasses to be replaced.
+        
     Returns
     -------
     tf.keras.models.Model
         Functional keras model.
 
     '''
-    print('Warning: this function will only' +  
-          'replace layers of type tf.keras.layers.ReLU.' + 
-          'Other ReLU activations will go unnoticed.')
+    print('Warning: this function will only ' +  
+          f'replace layers of type {instance}. ' + 
+          'Other ReLU activations will go unnoticed.\n')
     
     # Auxiliary dictionary to describe the network graph
     network_dict = {'input_layers_of': {}, 'new_output_tensor_of': {}}
@@ -135,10 +137,9 @@ def build_gb_model_nonseq(model):
             layer_input = layer_input[0]
 
         # Replace layer if layer instance is ReLU
-        if isinstance(layer, tf.keras.layers.ReLU):
+        if isinstance(layer, instance):
             x = layer_input
-            new_layer = GuidedReLU()
-            new_layer._name = 'GuidedReLU'
+            new_layer = GuidedReLU(name=f'{layer._name}_GuidedReLU')
             x = new_layer(x)
             print(f'Replace {layer._name} by {new_layer.name}')
         else:
