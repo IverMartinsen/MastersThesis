@@ -52,7 +52,7 @@ def move_files(filenames, source, destination):
     '''
     for file in filenames:
         try:
-            shutil.move(source + r'\\' + file, destination + r'\\' + file)
+            shutil.move(os.path.join(source, file), os.path.join(destination, file))
         except FileNotFoundError:
             print(file + ' not found')
 

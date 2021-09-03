@@ -9,7 +9,7 @@ Created on Thu Jul 22 15:19:23 2021
 import numpy as np
 
 def contour_img(img, target):
-    '''
+    """
     Returns boundary image from a binary input image.
     Based on the Moore Boundary Tracing Algorithm.
 
@@ -25,10 +25,10 @@ def contour_img(img, target):
     boundary_points, boundary_img : tuple
         Boundary points and boundary image.
 
-    '''    
+    """
     
     # starting at the uppermost-leftmost pixel with target value
-    b0 = np.array(np.where(img == target)).transpose()[0,:]
+    b0 = np.array(np.where(img == target)).transpose()[0, :]
     c0 = b0 - [0, 1]
     
     # matrix of relative 8-neighbours positions starting west
