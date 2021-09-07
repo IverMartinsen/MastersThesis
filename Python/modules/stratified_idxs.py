@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def stratified_idxs(labels, splits):
+def stratified_idxs(labels, splits, seed = None):
     """
     Produce stratified subsets of indices from labels.
 
@@ -9,6 +9,7 @@ def stratified_idxs(labels, splits):
     ----------
     labels : list-like sequence of class labels(int)
     splits : number of splits(int) or fractions(list/tuple/array)
+    seed : Optional, int. Seed for shuffling. The default is None.
 
     Returns
     -------
@@ -28,11 +29,15 @@ def stratified_idxs(labels, splits):
 
     subsets = {}
 
+    rng = np.random.default_rng(seed=seed)
+
     # for each class, select same proportion of images for all subsets
     for i, class_label in enumerate(class_labels):
 
         class_idxs = np.where(labels == class_label)[0]
         class_size = len(class_idxs)
+
+        rng.shuffle(class_idxs)
 
         subset_idx = np.round(
             np.cumsum(class_size * np.array(splits))).astype('int')
@@ -56,5 +61,7 @@ def stratified_idxs(labels, splits):
                         (subsets[j],
                          class_idxs[subset_idx[j - 1]:subset_idx[j]])
                     )
+
+            rng.shuffle(subsets[j])
 
     return tuple(subsets.values())
