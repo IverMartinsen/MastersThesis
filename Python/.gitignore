@@ -7,3 +7,4 @@
 !modules/analysis
 __pycache__/
 *.jpg
+/.idea
