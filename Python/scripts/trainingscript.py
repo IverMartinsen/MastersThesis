@@ -1,12 +1,16 @@
+"""
+Script for a single training run on the cod otolith data.
+Includes visualization by guided backpropagation.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import os
-from model_functional import build_model
-from pixelanalysis import build_model as build_gbmodel
-from pixelanalysis import compute_grads
+from modules.model.functional import model
+from modules.analysis.guided_backpropagation import build_gb_model_seq as build_gbmodel
+from modules.analysis.utils import compute_gradients
 from matplotlib import cm
-
 
 
 '''
@@ -36,14 +40,13 @@ valid_ds = tf.keras.preprocessing.image_dataset_from_directory(
     batch_size=32)
 
 
-
 '''
 Train model
 '''
-model = build_model()
 
 callbacks = [
-    tf.keras.callbacks.EarlyStopping(patience=20, restore_best_weights=True)]
+    tf.keras.callbacks.EarlyStopping(patience=20, restore_best_weights=True)
+]
 
 history = model.fit(train_ds,
                     epochs=100,
@@ -51,7 +54,6 @@ history = model.fit(train_ds,
                     callbacks=callbacks)
 
 
-            
 '''
 Plot loss
 '''
@@ -65,7 +67,6 @@ plt.plot(
     label='Minimum validation loss')
 plt.legend()
 plt.xlabel('epochs')
-
 
 
 '''
@@ -84,7 +85,6 @@ plt.legend()
 plt.xlabel('epochs')
 
 
-    
 '''
 Save model and weights to a folder given by cp_location
 '''
@@ -96,14 +96,13 @@ model.save_weights(
     cp_location + '\\' + os.path.split(path)[-1] + '_weights\\trained')
 
 
-
 '''
 Visualization of pixel relevance by guided backpropagation
 '''
 guided_backprop_model = build_gbmodel(model)
 
 image = list(valid_ds)[0][0][3]
-grads = compute_grads(image, guided_backprop_model)
+grads = compute_gradients(image, guided_backprop_model, num_class=0)
 
 vmin = 0
 vmax = 1
@@ -119,7 +118,7 @@ ax2.imshow(hm, cm.jet, vmin=vmin, vmax=vmax)
 ax2.axis('off')
 ax2.set_title('Pixel relevance by Guided Backpropagation')
 
-ax3.imshow(image, 'gray', alpha = 0.5)
-ax3.imshow(hm, cm.jet, vmin=vmin, vmax=vmax, alpha = 0.7)
+ax3.imshow(image, 'gray', alpha=0.5)
+ax3.imshow(hm, cm.jet, vmin=vmin, vmax=vmax, alpha=0.7)
 ax3.axis('off')
 ax3.set_title('Combined image')
