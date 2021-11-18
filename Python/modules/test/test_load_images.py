@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Test functions for the imageloader function.
+Test function for load_images.
 
 Created on Sun Jun 13 13:46:54 2021
 

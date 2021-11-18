@@ -34,7 +34,7 @@ def generate_path_inputs(baseline, image, alphas):
         3D tensor of floats.
     input_img : numpy.ndarray
         3D tensor of floats.
-    alphas : numpy.ndarray  
+    alphas : numpy.ndarray
         Sequence of alpha values.
 
     Returns path_inputs
