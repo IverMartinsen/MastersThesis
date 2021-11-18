@@ -1,3 +1,7 @@
+"""
+Test function for stratified_idxs
+"""
+
 import numpy as np
 from modules.stratified_idxs import stratified_idxs
 
