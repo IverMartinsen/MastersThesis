@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Deprecated script
+k*l-fold cross-validation applied on cod otolith data.
+The model and results were presented at NORDSTAT 2021.
 
 Created on Wed Jun  9 10:30:59 2021
 
@@ -11,18 +12,17 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from imageloader import imageloader
+from modules.imageloader import load_images
 
 from tensorflow.keras.layers import Dense, Flatten, Conv2D, MaxPool2D, ReLU
 from tensorflow.keras.layers import BatchNormalization, Dropout, Input 
 from tensorflow.keras.layers.experimental.preprocessing import Rescaling
 
 
-
 def build_model():
-    '''
+    """
     Function for building a new model for each trial.
-    '''
+    """
     L2 = tf.keras.regularizers.L2()
 
     inputs = Input(shape=(128, 128, 1))
@@ -62,51 +62,48 @@ def build_model():
     # output layer    
     outputs = Dense(1, activation='sigmoid')(x)
         
-    model = tf.keras.Model(inputs=inputs, outputs=outputs)
+    _model = tf.keras.Model(inputs=inputs, outputs=outputs)
     
-    model.compile(
+    _model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
         loss=tf.keras.losses.BinaryCrossentropy(),
         metrics=[tf.keras.metrics.BinaryAccuracy()])
     
-    return model
-
+    return _model
 
 
 # turn off interactive plotting to avoid plots popping up during trials
 plt.ioff()
 
 
-
 '''
 Import images
 '''
 # path to image folder
-path = (r'C:\Users\iverm\OneDrive\Desktop\Aktive prosjekter\Masteroppgave' + 
-        '\Data\Torskeotolitter\standard')
+path = r'C:\Users\iverm\OneDrive\Desktop\Aktive prosjekter\Masteroppgave\Data\Torskeotolitter\standard'
 
 # use k splits of equal size
 k = 5
-sets = imageloader(path, (128, 128), 5, seed=123)
-
+sets = load_images(path, (128, 128), 5, seed=123)
 
 
 '''
 Train model
 '''
 # path to folder where output images and results are stored
-destination = (r'C:\Users\iverm\OneDrive\Desktop\Aktive prosjekter\Masteroppgave' + 
-               '\Forsøk 12.08.2021')
+destination = r'C:\Users\iverm\OneDrive\Desktop\Aktive prosjekter\Masteroppgave\Forsøk 12.08.2021'
 
 # make a new folder where learning curves are stored
 folder_name = 'Learning curves'
 os.makedirs(destination + '\\' + folder_name, exist_ok=True)
 
-
+# create empty dataframes for storing results
 individual_results = pd.DataFrame()
 summary_results = pd.DataFrame()
-trial_num =0
+trial_num = 0
 model = None
+
+# iterate over test sets
 for test_ds in sets:
     for valid_ds in (ds for ds in sets if ds != test_ds):
         trial_num += 1
@@ -136,7 +133,6 @@ for test_ds in sets:
             validation_data=(x_va, y_va),
             callbacks=callbacks)
             
-
         '''Plot loss and save figure'''
         plt.figure(figsize=(12, 8))
         plt.plot(history.history['loss'], label='Training loss')
@@ -153,11 +149,8 @@ for test_ds in sets:
         Evaluate on test set
         '''
         
-        #model.evaluate(test_ds)
-        
         predictions = model.predict(test_ds['images'])
         labels = predictions.round()
-        
         
         dataframe = pd.DataFrame(
                 test_ds['labels'],
@@ -179,7 +172,6 @@ for test_ds in sets:
 
         acc_1 = np.sum(test_ds['labels'][idx] == labels.flatten()[idx]) / len(test_ds['labels'][idx])
 
-        
         dataframe = pd.DataFrame(
                 [model.evaluate(test_ds['images'], test_ds['labels'])[1], acc_0, acc_1],
                 index=['Accuracy', 'cc', 'neac'],
@@ -188,10 +180,6 @@ for test_ds in sets:
         summary_results = pd.merge(
             summary_results, dataframe, how='outer', left_index=True, right_index=True)
 
+# save results to file
 individual_results.to_excel(destination + '\\individual_results.xlsx')
 summary_results.to_excel(destination + '\\summary_results.xlsx')
-
-        
-idx = np.where(test_ds['labels'] == 0)
-
-np.sum(test_ds['labels'][idx] == labels.flatten()[idx]) / len(test_ds['labels'][idx])
