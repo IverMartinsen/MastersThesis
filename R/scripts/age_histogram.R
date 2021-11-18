@@ -1,11 +1,12 @@
 library(ggplot2)
 
 
-df = read.csv(r'(C:\Users\iverm\Desktop\UiT\Data\Grønlandskveiteotolitter\dataframe.csv)')
+df = read.csv(r'(C:\Users\iverm\OneDrive - UiT Office 365\UiT\Data\Grønlandskveiteotolitter\dataframe.csv)')
 
 ggplot(df[rowSums(is.na(df)) == 0, ], aes(x = age, fill = sex)) + 
-  geom_histogram(aes(y = ..density..), binwidth = 1, alpha = 0.3, position = 'identity') + 
-  geom_density(position = 'identity', alpha = 0.3, show.legend = FALSE, aes(color = sex)) + 
+  geom_bar(aes(y = ..count..), binwidth = 1, alpha = 0.6, position = 'identity') + 
+  geom_text(stat='count', aes(label=..count..), vjust = -1) + 
+  #geom_density(position = 'identity', alpha = 0.3, show.legend = FALSE, aes(color = sex)) + 
   theme_classic() + 
   xlab('Age') + 
   ylab('') + 
@@ -24,7 +25,7 @@ ggplot(df[rowSums(is.na(df)) == 0, ], aes(x = length, fill = sex)) +
   theme(text = element_text(size = 20)) + 
   labs(fill='Sex')
 
-var(df[df$sex == 'female', ]$age)
+sd(df[df$sex == 'male', ]$age)
 
 shapiro.test(df[df$sex == 'male', ]$age)
 
