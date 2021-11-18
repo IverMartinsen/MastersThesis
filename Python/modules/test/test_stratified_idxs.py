@@ -1,5 +1,5 @@
 """
-Test function for stratified_idxs
+Test function for stratified_idxs.
 """
 
 import numpy as np
