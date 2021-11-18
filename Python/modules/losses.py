@@ -1,5 +1,5 @@
 """
-Custom keras loss functions
+Custom keras loss functions.
 """
 
 import tensorflow as tf

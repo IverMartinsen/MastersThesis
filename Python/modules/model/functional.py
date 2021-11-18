@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Example of building models with tf.keras.Functional
+Example of building models with tf.keras.Functional.
 
 Created on Fri May 21 11:29:41 2021
 

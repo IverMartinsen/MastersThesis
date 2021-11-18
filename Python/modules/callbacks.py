@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Custom keras callbacks
+Custom keras callbacks.
 
 Created on Thu Jun  3 15:02:43 2021
 

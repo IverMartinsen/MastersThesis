@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Collection of utility functions
+Collection of utility functions.
 
     normalize()
     confusion_matrix()

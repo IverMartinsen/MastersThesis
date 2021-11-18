@@ -1,5 +1,5 @@
 '''
-Module for loading image from folder
+Module for loading images from folder.
 '''
 
 import pathlib

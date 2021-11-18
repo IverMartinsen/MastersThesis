@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """
+Utility functions for feature relevance analysis.
+
 Created on Wed Aug 25 13:57:39 2021
 
 @author: iverm
