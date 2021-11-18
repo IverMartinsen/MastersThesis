@@ -35,22 +35,71 @@ df = data.frame(
 
 # Create histogram of class-wise score distributions
 ggplot(df, aes(x = score, fill = ncc)) +
-  geom_density(position = 'identity', aes(x = score), alpha = 0.6) +
+  geom_density(position = 'identity', binwidth = 1, aes(x = score), alpha = 0.6) +
   geom_vline(xintercept = 0, linetype = 'dashed') + 
   scale_fill_discrete(name = 'Stock', labels = c('NEAC', 'NCC')) + 
   theme_classic() + 
   theme(text = element_text(size = 20))
 
+# create plot of weighted density
+ncc_curve = density(df$score[which(df$ncc == TRUE)])
+neac_curve = density(df$score[which(df$ncc == FALSE)])
+x.temp = c(neac_curve$x, ncc_curve$x)
+y.temp = c(neac_curve$y*243/610, ncc_curve$y*367/610)
+f.temp = c(rep('neac', length(neac_curve$x)), rep('ncc', length(ncc_curve$x)))
+df.scaled = data.frame(x = x.temp, y = y.temp, f = f.temp)
+ggplot(df.scaled, aes(x = x, y = y, fill = f)) + 
+  geom_area(alpha=.6) + 
+  geom_vline(xintercept = 0, linetype = 'dashed') + 
+  scale_fill_discrete(name = 'Stock', labels = c('NCC', 'NEAC')) + 
+  theme_classic() + 
+  theme(text = element_text(size = 20))
+
+sum(df[which(df$ncc == TRUE), ]$score > 0) / (4*367)
+sum(df[which(df$ncc == FALSE), ]$score < 0) / (4*243)
+
 # Create histogram of trial-wise score distributions
-ggplot(df[which((df$trial == 'X9'|df$trial == 'X10'|df$trial == 'X11'|df$trial == 'X12') & df$ncc == FALSE), ], aes(x = score, fill = trial)) + 
+ggplot(df[which((df$trial == 'X1'|df$trial == 'X2'|df$trial == 'X3'|df$trial == 'X4') & df$ncc == TRUE), ], aes(x = score, fill = trial)) + 
   geom_density(position = 'identity', aes(x = score), alpha = .8) +
-  scale_fill_discrete(name = 'Trial no.', labels = c(5, 6, 7, 8)) +
+  scale_fill_discrete(name = 'Trial no.', labels = c(1, 2, 3, 4)) +
   theme_classic() + 
   theme(text = element_text(size = 20), plot.title = element_text(hjust = 0.5)) + 
-  labs(title = 'Norwegian Coastal Cod')
+  labs(title = 'Norwegian Coastal Cod') + 
+  ylim(0, 0.3) + 
+  xlim(-10, 10)
+
+# Mean of scores
+sum(squeezed_scores[which(squeezed_scores$ncc == FALSE), 2:5]) / (4*length(which(squeezed_scores$ncc == FALSE)))
+
+var(unlist(squeezed_scores[which(squeezed_scores$ncc == FALSE), 2:5]))*(243*4-1)
 
 # Pooled variance
-mean(apply(squeezed_scores[which(squeezed_scores$ncc == TRUE), seq(2, 5)], 1, var))
+sum(apply(squeezed_scores[which(squeezed_scores$ncc == FALSE), seq(2, 5)], 1, var))
+
+4*sum((apply(squeezed_scores[which(squeezed_scores$ncc == FALSE), seq(2, 5)], 1, mean) - 1.968051)**2) / (242*4)
+4*sum((apply(squeezed_scores[which(squeezed_scores$ncc == FALSE), seq(2, 5)], 1, mean) - 1.968051)**2)
 
 # Number of samples with ambigous classifications
 length(which(apply(sign(squeezed_scores[, 1:4]), 1, (function(x) length(unique(x)) != 1))))
+
+summary_results = read.csv(r'(C:\Users\iverm\OneDrive - UiT Office 365\UiT\Torskeotolitter\Forsøk\Forsøk 13.08.2021\summary_results.csv)', sep = ';', dec = ',')
+test = (1 - summary_results[2:3, 2:21])*c(367, 243) / 610
+
+test[1, ] < test[2, ]
+
+
+library(ggplot2)
+
+x = seq(-10, 10, 0.01)
+y1 = 367*dnorm(x, mean = -3, sd = sqrt(6.25))/610
+y2 = 243*dnorm(x, mean = 1.97, sd = sqrt(6.30))/610
+
+ggplot() + 
+  geom_line(size = 2, aes(c(x, x), c(y1, y2), color = c(rep('NCC', length(x)), rep('NEAC', length(x))))) +
+  geom_area(aes(x[x>=0], y1[x>=0])) + 
+  geom_area(aes(x[x<=0], y2[x<=0])) + 
+  theme_classic() + 
+  theme(text = element_text(size = 20), plot.title = element_text(hjust = 0.5)) + 
+  labs(x = 'Score', y = 'Density', title = 'Probability of misclassification') + 
+  scale_color_discrete(name = '')
+
