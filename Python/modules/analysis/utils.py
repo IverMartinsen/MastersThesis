@@ -49,3 +49,5 @@ def build_extractor(model, layers):
     layer_outputs = [layer.output for layer in [model.layers[i] for i in layers]]
 
     return tf.keras.models.Model(inputs = model.input, outputs = layer_outputs)
+
+
