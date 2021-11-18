@@ -24,7 +24,6 @@ import tensorflow as tf
 from modules.analysis.utils import compute_gradients
 
 
-
 def generate_path_inputs(baseline, image, alphas):
     '''
     Generates m interpolated images between input and baseline image.
