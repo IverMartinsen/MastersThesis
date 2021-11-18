@@ -40,3 +40,28 @@ class MeanSquaredErrorKLD(tf.keras.losses.Loss):
         kld = gamma * tf.reduce_sum(normal_divergence(mean_true, mean_pred, std_true, std_pred))
 
         return tf.keras.losses.mean_squared_error(y_true, y_pred) + tf.cast(kld, tf.float32)
+
+
+class MeanRelativeSquaredError(tf.keras.losses.Loss):
+    """
+    Custom loss computing the Mean Relative Squared Error
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def call(self, y_true, y_pred):
+        return tf.reduce_mean((1 - y_pred / tf.cast(y_true, tf.float32)) ** 2)
+
+
+class MeanCV(tf.keras.losses.Loss):
+    """
+    Custom loss computing the Mean CV
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def call(self, y_true, y_pred):
+        return tf.reduce_mean((tf.math.sqrt(2 * (tf.cast(y_true, tf.float32) - y_pred) ** 2) / (
+                    tf.cast(y_true, tf.float32) + y_pred))) * 100
