@@ -40,8 +40,8 @@ ggplot(subset(dataset, sex == 'male')) +
   ylab('Age') + 
   scale_size_area(max_size = 16) + 
   theme(text = element_text(size = 20)) #+ 
-  #geom_function(fun = male_age) + 
-  #geom_line(aes(x = length, y = model$fitted.values[dataset$sex == 'male']))
+#geom_function(fun = male_age) + 
+#geom_line(aes(x = length, y = model$fitted.values[dataset$sex == 'male']))
 
 # Discard data with incomplete features
 dataset = dataset[rowSums(is.na(dataset)) == 0, ]
@@ -90,3 +90,46 @@ ggplot(df, aes(x = fitted, y = value, colour = group)) +
 
 curve(male_age, xlim = c(0, 100), ylim = c(0, 26))
 l(dataset$length, model$fitted.values)
+
+
+library(ggplot2)
+
+
+df = read.csv(r'(C:\Users\iverm\OneDrive - UiT Office 365\UiT\Data\Grønlandskveiteotolitter\dataframe.csv)')
+
+ggplot(df[rowSums(is.na(df)) == 0, ], aes(x = age, fill = sex)) + 
+  geom_bar(aes(y = ..count..), binwidth = 1, alpha = 0.6, position = 'identity') + 
+  geom_text(stat='count', aes(label=..count..), vjust = -1) + 
+  #geom_density(position = 'identity', alpha = 0.3, show.legend = FALSE, aes(color = sex)) + 
+  theme_classic() + 
+  xlab('Age') + 
+  ylab('') + 
+  scale_x_continuous(breaks = seq(0, 26, 2)) + 
+  theme(text = element_text(size = 20)) + 
+  labs(fill='Sex')
+
+
+ggplot(df[rowSums(is.na(df)) == 0, ], aes(x = length, fill = sex)) + 
+  geom_histogram(aes(y = ..density..), binwidth = 2, alpha = 0.3, position = 'identity') + 
+  geom_density(position = 'identity', alpha = 0.3, show.legend = FALSE, aes(color = sex)) + 
+  theme_classic() + 
+  xlab('Length (cm)') + 
+  ylab('') + 
+  scale_x_continuous() + 
+  theme(text = element_text(size = 20)) + 
+  labs(fill='Sex')
+
+sd(df[df$sex == 'male', ]$age)
+
+shapiro.test(df[df$sex == 'male', ]$age)
+
+ks.test(df[df$sex == 'female', ]$age, df[df$sex == 'male', ]$age)
+
+qqnorm(df[df$sex == 'female', ]$age)
+
+
+plot(log(df[df$sex == 'male', ]$length), log(df[df$sex == 'male', ]$age))
+
+model = lm(age ~ length*factor(sex), df)
+plot(model$residuals)
+qqnorm(model$residuals)
