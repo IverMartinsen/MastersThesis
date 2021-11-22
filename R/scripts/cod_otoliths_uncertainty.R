@@ -1,14 +1,17 @@
+# Script for analysis of cod otolith uncertainty
+
 library(reshape2)
 library(ggplot2)
 
-# Load dataframe of scores
-individual_scores = read.csv(r'(C:\Users\iverm\OneDrive - UiT Office 365\UiT\Torskeotolitter\Forsøk\Forsøk 13.08.2021\individual_scores.csv)', sep = ';', dec = ',')
+# Load dataframe of scores and summary results
+individual_scores = read.csv(r'(C:\Users\iverm\OneDrive - UiT Office 365\UiT\Deep learning applied to fish otolith images\Torskeotolitter\Forsøk\Forsøk 13.08.2021\individual_scores.csv)', sep = ';', dec = ',')
 colnames(individual_scores)[colnames(individual_scores) == colnames(individual_scores)[1]] = 'filename'
+summary_results = read.csv(r'(C:\Users\iverm\OneDrive - UiT Office 365\UiT\Deep learning applied to fish otolith images\Torskeotolitter\Forsøk\Forsøk 13.08.2021\summary_results.csv)', sep = ';', dec = ',')
 
 # Number of samples
 num_samples = length(individual_scores$filename)
 
-# Squeeze individual scores
+# Create dataframe that squeezes the individual scores into 4 colums
 squeezed_scores = data.frame(
   filename = individual_scores$filename,
   'trial1' = rep(0, num_samples),
@@ -55,10 +58,7 @@ ggplot(df.scaled, aes(x = x, y = y, fill = f)) +
   theme_classic() + 
   theme(text = element_text(size = 20))
 
-sum(df[which(df$ncc == TRUE), ]$score > 0) / (4*367)
-sum(df[which(df$ncc == FALSE), ]$score < 0) / (4*243)
-
-# Create histogram of trial-wise score distributions
+# Create histogram of trial-wise score distributions for trial 1 to 4
 ggplot(df[which((df$trial == 'X1'|df$trial == 'X2'|df$trial == 'X3'|df$trial == 'X4') & df$ncc == TRUE), ], aes(x = score, fill = trial)) + 
   geom_density(position = 'identity', aes(x = score), alpha = .8) +
   scale_fill_discrete(name = 'Trial no.', labels = c(1, 2, 3, 4)) +
@@ -68,32 +68,29 @@ ggplot(df[which((df$trial == 'X1'|df$trial == 'X2'|df$trial == 'X3'|df$trial == 
   ylim(0, 0.3) + 
   xlim(-10, 10)
 
-# Mean of scores
-sum(squeezed_scores[which(squeezed_scores$ncc == FALSE), 2:5]) / (4*length(which(squeezed_scores$ncc == FALSE)))
-
-var(unlist(squeezed_scores[which(squeezed_scores$ncc == FALSE), 2:5]))*(243*4-1)
-
-# Pooled variance
-sum(apply(squeezed_scores[which(squeezed_scores$ncc == FALSE), seq(2, 5)], 1, var))
-
-4*sum((apply(squeezed_scores[which(squeezed_scores$ncc == FALSE), seq(2, 5)], 1, mean) - 1.968051)**2) / (242*4)
-4*sum((apply(squeezed_scores[which(squeezed_scores$ncc == FALSE), seq(2, 5)], 1, mean) - 1.968051)**2)
+# Print mean of scores
+for(bool in c(TRUE, FALSE)){
+  print(paste0('NCC: ', bool))
+  print('')
+  n = 4*length(which(squeezed_scores$ncc == bool))
+  mean_score = sum(squeezed_scores[which(squeezed_scores$ncc == bool), 2:5]) / (n)
+  print(paste0('Mean score: ', mean_score))
+  print(paste0('SST: ', var(unlist(squeezed_scores[which(squeezed_scores$ncc == bool), 2:5]))*(n - 1)))
+  print(paste0('SSA: ', 4*sum((apply(squeezed_scores[which(squeezed_scores$ncc == bool), seq(2, 5)], 1, mean) - mean_score)**2)))
+  print('')
+}
 
 # Number of samples with ambigous classifications
 length(which(apply(sign(squeezed_scores[, 1:4]), 1, (function(x) length(unique(x)) != 1))))
 
-summary_results = read.csv(r'(C:\Users\iverm\OneDrive - UiT Office 365\UiT\Torskeotolitter\Forsøk\Forsøk 13.08.2021\summary_results.csv)', sep = ';', dec = ',')
-test = (1 - summary_results[2:3, 2:21])*c(367, 243) / 610
-
-test[1, ] < test[2, ]
-
-
-library(ggplot2)
-
+# x-axis for the pdf's
 x = seq(-10, 10, 0.01)
+
+# y-axis for the pdf's
 y1 = 367*dnorm(x, mean = -3, sd = sqrt(6.25))/610
 y2 = 243*dnorm(x, mean = 1.97, sd = sqrt(6.30))/610
 
+# Make plot showing the probability of misclassification
 ggplot() + 
   geom_line(size = 2, aes(c(x, x), c(y1, y2), color = c(rep('NCC', length(x)), rep('NEAC', length(x))))) +
   geom_area(aes(x[x>=0], y1[x>=0])) + 
@@ -102,4 +99,3 @@ ggplot() +
   theme(text = element_text(size = 20), plot.title = element_text(hjust = 0.5)) + 
   labs(x = 'Score', y = 'Density', title = 'Probability of misclassification') + 
   scale_color_discrete(name = '')
-
