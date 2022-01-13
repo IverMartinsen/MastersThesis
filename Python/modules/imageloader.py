@@ -6,7 +6,7 @@ import pathlib
 import numpy as np
 import os
 from PIL import Image
-from modules.image import normalize
+from modules.utils import normalize
 
 
 class ImageGenerator:
