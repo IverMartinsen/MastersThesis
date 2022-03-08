@@ -4,6 +4,7 @@ library(ggplot2)
 library(viridis)
 library(dplyr)
 library(gridExtra)
+library(Rcgmin)
 
 # Load dataframe with all available features arranged by filename
 dataset = read.csv(r'(C:\Users\UiT\OneDrive - UiT Office 365\Desktop\Deep learning applied to fish otolith images\Data\Blåkveiteotolitter\dataframe_new.csv)')
@@ -59,86 +60,58 @@ ggplot(dataset[which(dataset$sex != "unknown"), ], aes(x = length, fill = sex)) 
 
 
 
-
-
-normalize = function(x) (x - mean(x))/sd(x)
-
-
-# Discard data with incomplete features so we can fit a model 
-# predicting the age using length and sex.
-dataset = dataset[which(dataset$sex == 'female'), ]
-
-# Fit Von Bertalenffy model to the data
-# Define VBGF loss function
+# Define VBGF loss function in order to fit the Von Bertalanffy equation to the data.
 loss = function(params){
-  labels = dataset$age
-  predictions = params[1] - (1/params[2])*log(1 - dataset$length/params[3])
-  return(mean((labels - predictions)**2))
+    labels = subset(dataset, sex != 'unknown')$age
+    predictions = (
+        params[1] - 
+            (1/params[2])*log(1 - subset(dataset, sex != 'unknown')$length/params[3])*(
+                subset(dataset, sex != 'unknown')$sex == 'female'
+            ) - 
+            (1/params[4])*log(1 - subset(dataset, sex != 'unknown')$length/params[5])*(
+                subset(dataset, sex != 'unknown')$sex == 'male'
+                )
+        )
+    return(mean((labels - predictions)**2))
 }
 
 # Find model parameters using numerical optimization
-params = optimize(loss, c(100, 300))
-params
-loss(params$minimum)
+params = optim(c(0, 0.05, 120, 0.05, 120), loss)$par
+loss(params)
 
+# Compute the adjusted R2 to compare with a linear model
+n = dim(subset(dataset, sex != 'unknown'))[1]
+k = 5
+SSE = loss(params)*n
+SST = sum((subset(dataset, sex != 'unknown')$age - mean(subset(dataset, sex != 'unknown')$age))**2)
 
+R2.adjusted = 1 - (SSE/(n - k - 1))/(SST/(n - 1))
+linear_model = lm(age ~ length*as.factor(sex) - as.factor(sex), subset(dataset, sex != 'unknown'))
 
 # Function generator that returns an age prediction function
-pred_func = function(params){
+pred_func = function(params, sex){
   return(function(x){
-    return(params[1] - (1/params[2])*log(1 - x/params[3]))
+    return((
+        params[1] + params[2]*(sex == 'male') - 
+            (1/params[3])*log(1 - x/params[4]) - 
+            (1/params[5])*log(1 - x/params[6])*(sex == 'male')
+        ))
     })
 }
 
-# Define an age prediction function for each sex
-male_age = pred_func(test$par)
-female_age = function(x){
-  return(pred_func(params))
-}
 
-test = Rcgmin(c(-0.68, 0.05, 122.8), loss, lower = c(-10, 0, 102), upper = c(1, 1, 300))
-
-curve(male_age, from = 0, to = 100)
-
-for(i in seq(0, 100, 1)){
-  lines(pred_func(i)(x))
-}
-
-curve(pred_func(120)(x), from = 0, to = 100)
-
-
-
-anova(lm(age ~ length, dataset))
-
-dataset$length[953]
-
-
-sum((male_age(dataset$length) - dataset$age)**2)/2073
-
-x = (dataset$age - mean(dataset$age)) / sd(dataset$age)
-y = (dataset$length - mean(dataset$length)) / sd(dataset$length)
-plot(x, y)
-
-# Set colors for three groups: males, females and unknowns
-my_colors = viridis(3, begin = 0.5, end = 0.9)
-
-# Create a temporary dataframe adding a small term to the male length in order
-# to make a plot with non-overlapping points.
-df.temp = dataset
-df.temp$length[df.temp$sex == 'male'] = df.temp$length[df.temp$sex == 'male'] + .5
-
-# Plot age vs length for all three groups
-ggplot(df.temp, aes(y = age, x = length)) + 
-  geom_count(aes(color = sex), alpha = 0.6) + 
-  #scale_color_manual(values = my_colors, labels=c('Females', 'Males', 'Unknowns')) + 
-  theme_classic() + 
-  scale_y_continuous(breaks = seq(0, 26, 2)) + 
-  xlab('Length (cm)') + 
-  ylab('Age') + 
-  scale_size_area(max_size = 16) + 
-  theme(text = element_text(size = 20)) + 
-  labs(color='Sex') + 
-  geom_function(fun = female_age)
+# Plot age vs length for both sexes
+ggplot(subset(dataset, sex != 'unknown'), aes(y = age, x = length)) + 
+    geom_count(aes(color = sex), alpha = 0.5) +
+    theme_classic() + 
+    scale_y_continuous(breaks = seq(0, 26, 2)) + 
+    xlab('Length (cm)') + 
+    ylab('Age') + 
+    scale_size_area(max_size = 10) + 
+    theme(text = element_text(size = 10), legend.position = c(0.90, 0.35)) + 
+    labs(color='Sex') + 
+    stat_smooth(method = 'lm', data = subset(dataset, sex == 'male'), color = 'black', linetype = 3) + 
+    stat_smooth(method = 'lm', data = subset(dataset, sex == 'female'), color = 'black', linetype = 2)
 
 # Plot age vs length for females
 ggplot(subset(dataset, sex == 'female')) + 
