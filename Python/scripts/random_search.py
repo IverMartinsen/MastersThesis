@@ -43,9 +43,15 @@ valid_ds = tf.data.Dataset.from_tensor_slices((
     (img_known[valid_idx], sex_known[valid_idx]), lab_known[valid_idx]
 )).batch(batch_size=batch_size).take(2)
 
+# Compute mean values to use as bias initial values
+mean_values = (
+    0,
+    0,
+    np.mean(dataframe['age'].iloc[np.where(dataframe['sex'] == 'female')]),
+    np.mean(dataframe['age'].iloc[np.where(dataframe['sex'] == 'male')]),
+    np.mean(dataframe['age'].iloc[np.where(dataframe['sex'] == 'unknown')]))
 
 # Define a build model function
-
 def build_model(hp):
     """
 
@@ -78,7 +84,7 @@ def build_model(hp):
     x = tf.keras.layers.experimental.preprocessing.RandomRotation(0.1, fill_mode='constant')(x)
     x = base_model(x, training=False)
     x = tf.keras.layers.Dropout(hp.Float("dropout", 0, 0.5, 0.1))(x)
-    x = tf.keras.layers.Dense(5, 'relu')(x)
+    x = tf.keras.layers.Dense(5, 'relu', bias_initializer=tf.keras.initializers.Constant(mean_values))(x)
     # Then we us multiplication to get the gender conditional age predictions
     outputs = tf.keras.layers.Dot(axes=1)([x, encoding_layer(index_layer(cat_input))])
     # Finally, we concatenate the age prediction with the one-hot sex matrix
@@ -98,7 +104,7 @@ tuner = kt.RandomSearch(
     build_model,
     objective="val_loss",
     max_trials=20,
-    project_name='random_search')
+    project_name='_random_search_')
 
 # Execute random search
 tuner.search(
