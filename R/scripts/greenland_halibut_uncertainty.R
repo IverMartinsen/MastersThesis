@@ -1,11 +1,9 @@
 # Script for analysis of the Greenland halibut test results.
 
-
 library(ggplot2)
 library(reshape2)
 library(viridis)
-source('integral_numerical.R')
-
+source('../libraries/utils.R')
 
 # Load individual and summary results
 results = read.csv(r'(C:\Users\UiT\OneDrive - UiT Office 365\Desktop\Deep learning applied to fish otolith images\Artikkel om blåkveiteotolitter\Resultater\results.csv)')
@@ -13,47 +11,48 @@ summary = read.csv(r'(C:\Users\UiT\OneDrive - UiT Office 365\Desktop\Deep learni
 
 
 draw_differences = function(y, title){
-  #' Highlights the area which differs between the labeled distribution and predicted distribution.
-  #'
-  #' y: predictions to analyze, e.g. 'y1'
-  #' title: plot title, e.g. 'Predictions by deep learning'
+    #' Highlights the area which differs between the labeled distribution and predicted distribution.
+    #'
+    #' y, character: predictions to analyze, e.g. 'y1'
+    #' title, character: plot title, e.g. 'Predictions by deep learning'
   
-  # Create data frame that compares age with prediction
-  df.temp = melt(results, measure.vars = c('age', y))
+    # Create data frame that compares age with prediction
+    df.temp = melt(results, measure.vars = c('age', y))
 
-  plot.temp = ggplot(df.temp, aes(x = value, fill = interaction(sex, variable))) + 
-    geom_density()
+    plot.temp = ggplot(df.temp, aes(x = value, fill = interaction(sex, variable))) + 
+        geom_density()
 
-  # Create values for difference plots
-  dense = ggplot_build(plot.temp)$data[[1]]
+    # Create values for difference plots
+    dense = ggplot_build(plot.temp)$data[[1]]
 
-  # Create vector of min/max values for each sex that defines the ribbons to be drawn
-  ymin_male = pmin(dense[dense$group == 2, ]$y, dense[dense$group == 4, ]$y)
-  ymax_male = pmax(dense[dense$group == 2, ]$y, dense[dense$group == 4, ]$y)
-  ymin_female = pmin(dense[dense$group == 1, ]$y, dense[dense$group == 3, ]$y)
-  ymax_female = pmax(dense[dense$group == 1, ]$y, dense[dense$group == 3, ]$y)
+    # Create vector of min/max values for each sex that defines the ribbons to be drawn
+    ymin_male = pmin(dense[dense$group == 2, ]$y, dense[dense$group == 4, ]$y)
+    ymax_male = pmax(dense[dense$group == 2, ]$y, dense[dense$group == 4, ]$y)
+    ymin_female = pmin(dense[dense$group == 1, ]$y, dense[dense$group == 3, ]$y)
+    ymax_female = pmax(dense[dense$group == 1, ]$y, dense[dense$group == 3, ]$y)
   
-  # Vector of x values for ribbons
-  x = dense$x[1:512]
+    # Vector of x values for ribbons
+    x = dense$x[1:512]
 
-  # Plot difference in age distributions
-  ggplot() +
-    # Plot ribbons showing age distribution differences
-    geom_ribbon(aes(x = x, ymin = ymin_male, ymax = ymax_male, fill = 'Male')) + 
-    geom_ribbon(aes(x = x, ymin = ymin_female, ymax = ymax_female, fill = 'Female')) +
-    # Plot density line for labeled age
-    geom_density(aes(x = results$age[which(results$sex == 'male')]), size = 1) + 
-    geom_density(aes(x = results$age[which(results$sex == 'female')]), size = 1) + 
-    # Layout configurations
-    theme_classic() + 
-    labs(x = 'Age', fill = 'Sex', title = title) + 
-    scale_fill_manual(values = viridis(20)[c(10, 19)]) + 
-    theme(text = element_text(size = 20), plot.title = element_text(hjust = 0.5))
+    # Plot difference in age distributions
+    ggplot() +
+        # Plot ribbons showing age distribution differences
+        geom_ribbon(aes(x = x, ymin = ymin_male, ymax = ymax_male, fill = 'Male')) + 
+        geom_ribbon(aes(x = x, ymin = ymin_female, ymax = ymax_female, fill = 'Female')) +
+        # Plot density line for labeled age
+        geom_density(aes(x = value, color = sex, linetype = variable), size = 1, data = melt(results, measure.vars = c('age', y))) + 
+        # Layout configurations
+        theme_classic() + 
+        labs(x = 'Age', fill = 'Sex', title = title) + 
+        theme(text = element_text(size = 10), plot.title = element_text(hjust = 0.5), legend.position = c(0.8, 0.8)) + 
+        scale_fill_discrete(name = '') + 
+        scale_color_manual(values = c('black', 'black'), guide = 'none') + 
+        scale_linetype_discrete(name = '', labels = c('Distribution of labels', 'Distribution of predictions'))
 }
 
 
 # Display difference in age distributions
-draw_differences('y2', 'test')
+draw_differences('y2', 'Length based estimates')
 
 
 # Compute and print accuracy and loss for all models/sexes 
@@ -145,13 +144,13 @@ plot_residuals = function(y, title){
   
   # Plot residuals
   ggplot(df.temp, aes_string(x = y, y = 'res')) + 
-    geom_count(aes(color = -abs(res + mean))) + 
-    scale_color_viridis(guide = FALSE) +
-    scale_size_area(max_size = 16) + 
-    theme_minimal() + 
+    geom_count(aes(color = -abs(res + mean)), show.legend = FALSE) + 
+    scale_color_viridis(guide = 'none') +
+    scale_size_area(max_size = 8) + 
+    theme_classic() + 
     scale_x_continuous(breaks=seq(0, 26, by=2), limits=c(0, 26)) + 
     scale_y_continuous(limits=c(-15, 15)) + 
-    theme(text = element_text(size = 20), plot.title = element_text(hjust = 0.5)) + 
+    theme(text = element_text(size = 10), plot.title = element_text(hjust = 0.5)) + 
     labs(x = 'Predicted age', y = 'Residual', title = title)
 }
 
@@ -235,9 +234,9 @@ for(sex in c('male', 'female')){
 }
 
 ggplot(variances, aes_string(x = 'age', y = y, color = 'sex')) + 
-  geom_point(size = 8) + 
-  theme_classic() + 
-  scale_x_continuous(breaks=seq(0, 26, by=2), limits=c(0, 26)) + 
-  theme(text = element_text(size = 20), plot.title = element_text(hjust = 0.5)) + 
-  labs(x = 'Age', y = 'Standard deviation', title = title) + 
-  scale_color_discrete(name = '', labels = c('Female', 'Male'))
+    geom_point(size = 4) + 
+    theme_classic() + 
+    scale_x_continuous(breaks=seq(0, 26, by=2), limits=c(0, 26)) + 
+    theme(text = element_text(size = 10), plot.title = element_text(hjust = 0.5), legend.position = c(0.95, 0.15)) + 
+    labs(x = 'Age', y = 'Standard deviation', title = title) + 
+    scale_color_discrete(name = '', labels = c('Female', 'Male'))
