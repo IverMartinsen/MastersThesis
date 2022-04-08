@@ -7,7 +7,7 @@ library(gridExtra)
 library(Rcgmin)
 
 # Load dataframe with all available features arranged by filename
-dataset = read.csv(r'(C:\Users\UiT\OneDrive - UiT Office 365\Desktop\Deep learning applied to fish otolith images\Data\Blåkveiteotolitter\dataframe_new.csv)')
+dataset = read.csv(r'(C:\Users\UiT\OneDrive - UiT Office 365\Desktop\Deep learning applied to fish otolith images\Data\Blåkveiteotolitter\dataframe.csv)')
 
 # Helper function to generate colors from the standard ggplot2 palette
 get_colors = function(n) hcl(h = seq(15, 375, length = n + 1), l = 65, c = 100)[1:n]
@@ -48,15 +48,15 @@ grid.arrange(arrangeGrob(p1, p2, ncol = 1, nrow = 2, heights = c(2, 0.85)))
 
 
 # Display length distribution for each sex
-ggplot(dataset[which(dataset$sex != "unknown"), ], aes(x = length, fill = sex)) + 
-  geom_histogram(aes(y = ..density..), color = 'white', binwidth = 2, alpha = 0.3, position = 'identity') + 
-  geom_density(position = 'identity', alpha = 0.3, show.legend = FALSE, aes(color = sex)) + 
-  theme_classic() + 
-  xlab('Length (cm)') + 
-  ylab('') + 
-  scale_x_continuous() + 
-  theme(text = element_text(size = 10), legend.position = c(0.85, 0.65)) + 
-  labs(fill='Sex')
+length_distribution = ggplot(dataset[which(dataset$sex != "unknown"), ], aes(x = length, fill = sex)) + 
+    geom_histogram(aes(y = ..density..), color = 'white', binwidth = 2, alpha = 0.3, position = 'identity') + 
+    geom_density(position = 'identity', alpha = 0.3, show.legend = FALSE, aes(color = sex)) + 
+    theme_classic() + 
+    xlab('Length (cm)') + 
+    ylab('') + 
+    scale_x_continuous() + 
+    theme(text = element_text(size = 10), legend.position = c(0.85, 0.65), axis.text.y = element_blank(), axis.ticks.y = element_blank()) + 
+    labs(fill='Sex')
 
 
 
@@ -101,17 +101,22 @@ pred_func = function(params, sex){
 
 
 # Plot age vs length for both sexes
-ggplot(subset(dataset, sex != 'unknown'), aes(y = age, x = length)) + 
-    geom_count(aes(color = sex), alpha = 0.5) +
+length_scatter = ggplot(subset(dataset, sex != 'unknown'), aes(y = age, x = length)) + 
+    geom_count(aes(color = sex), alpha = 0.5, show.legend = FALSE) +
     theme_classic() + 
     scale_y_continuous(breaks = seq(0, 26, 2)) + 
     xlab('Length (cm)') + 
     ylab('Age') + 
     scale_size_area(max_size = 10) + 
-    theme(text = element_text(size = 10), legend.position = c(0.90, 0.35)) + 
+    theme(text = element_text(size = 10), legend.position = c(1.00, 0.35)) + 
     labs(color='Sex') + 
     stat_smooth(method = 'lm', data = subset(dataset, sex == 'male'), color = 'black', linetype = 3) + 
     stat_smooth(method = 'lm', data = subset(dataset, sex == 'female'), color = 'black', linetype = 2)
+
+
+# Combine length distribution and scatter plot in the same plot
+grid.arrange(length_distribution, length_scatter, ncol = 2)
+
 
 # Plot age vs length for females
 ggplot(subset(dataset, sex == 'female')) + 

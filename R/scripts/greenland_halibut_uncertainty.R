@@ -1,8 +1,11 @@
-# Script for analysis of the Greenland halibut test results.
+################################################################
+### Script for analysis of the Greenland halibut test results###
+################################################################
 
 library(ggplot2)
 library(reshape2)
 library(viridis)
+library(gridExtra)
 source('../libraries/utils.R')
 
 # Load individual and summary results
@@ -35,7 +38,7 @@ draw_differences = function(y, title){
     x = dense$x[1:512]
 
     # Plot difference in age distributions
-    ggplot() +
+    p = ggplot() +
         # Plot ribbons showing age distribution differences
         geom_ribbon(aes(x = x, ymin = ymin_male, ymax = ymax_male, fill = 'Male')) + 
         geom_ribbon(aes(x = x, ymin = ymin_female, ymax = ymax_female, fill = 'Female')) +
@@ -44,15 +47,20 @@ draw_differences = function(y, title){
         # Layout configurations
         theme_classic() + 
         labs(x = 'Age', fill = 'Sex', title = title) + 
-        theme(text = element_text(size = 10), plot.title = element_text(hjust = 0.5), legend.position = c(0.8, 0.8)) + 
+        theme(text = element_text(size = 10), plot.title = element_text(hjust = 0.5), legend.position = c(0.85, 0.7)) + 
         scale_fill_discrete(name = '') + 
         scale_color_manual(values = c('black', 'black'), guide = 'none') + 
-        scale_linetype_discrete(name = '', labels = c('Distribution of labels', 'Distribution of predictions'))
+        scale_linetype_discrete(name = '', labels = c('Read age', 'Predictions'))
+    
+    return(p)
 }
 
 
 # Display difference in age distributions
-draw_differences('y2', 'Length based estimates')
+p1 = draw_differences('y1', 'Image based estimates')
+p2 = draw_differences('y2', 'Length based estimates')
+
+grid.arrange(p1, p2, ncol = 2)
 
 
 # Compute and print accuracy and loss for all models/sexes 
@@ -93,117 +101,109 @@ df.temp = results
 df.temp$age[which(df.temp$sex == 'male')] = df.temp$age[which(df.temp$sex == 'male')] + 0.4
 
 # Scatter plot predicted age vs labeled age
-ggplot(df.temp, aes(x = age, y = round(y1), color = sex)) + 
+scatterplot = ggplot(df.temp, aes(x = age, y = round(y1), color = sex)) + 
     geom_count(aes(colour = sex), alpha = 1) + 
-    scale_size_area(max_size = 8) + 
-    theme_classic() + 
+    scale_size_area(max_size = 6) + 
+    theme_minimal() + 
     geom_abline(slope = 1, intercept = 0, linetype = 'dotted') + 
     scale_x_continuous(breaks=seq(0, 26, by=2), limits=c(0, 26)) +
     scale_y_continuous(breaks=seq(0, 26, by=2), limits=c(0, 26)) + 
-    labs(x = 'True age', y = 'Predicted age', title = '') + 
+    labs(x = 'True age', y = 'Predicted age', title = 'A') + 
     theme(text = element_text(size = 10), plot.title = element_text(hjust = 0.5), legend.position = c(0.1, 0.7)) + 
     scale_color_discrete(name = 'Sex', labels = c('Female', 'Male'))
 
-# Create dataframe for comparing age vs age for length model and deep learning model
-df.temp = melt(results, measure.vars = c('y2', 'y1'))
-# Add a small term to the x-axis for the length predictions to enable pairwise comparison
-df.temp$age[which(df.temp$variable == 'y1')] = df.temp$age[which(df.temp$variable == 'y1')] + 0.3
 
-
-# Plot difference in age-vs-age for length and deep learning
-ggplot(df.temp[which(df.temp$sex == 'female'), ], aes(x = age, y = round(value), color = variable)) + 
-  geom_count() + 
-  scale_size_area(max_size = 16) + 
-  geom_abline(slope = 1, intercept = 0, size = 1) + 
-  theme_classic() + 
-  scale_x_continuous(breaks=seq(0, 26, by=2), limits=c(0, 26)) +
-  scale_y_continuous(breaks=seq(0, 26, by=2), limits=c(0, 26)) +
-  labs(x = 'True age', y = 'Predicted age', title = 'Female predictions') + 
-  theme(text = element_text(size = 20), plot.title = element_text(hjust = 0.5)) + 
-  scale_colour_discrete(name = 'Model', labels = c('Length', 'Deep learning'))
 
 
 plot_residuals = function(y, title){
-  #' Plot residuals vs predictions
-  #'
-  #' y: prediction to use, e.g. 'y1'
-  #' title: plot title, e.g. 'Deep learning predictions'
+    #' Produce ggplot of residuals vs predictions
+    #' 
+    #' y: prediction to use, e.g. 'y1'
+    #' title: plot title, e.g. 'Deep learning predictions'
   
-  # Compute the mean residual for each age
-  df.temp = results
-  df.temp$mean = 0
+    # Compute the mean residual for each age
+    df.temp = results
+    df.temp$mean = 0
   
-  for(i in 1:26){
-    idx = which(round(df.temp[, y]) == i)
-    df.temp$mean[idx] = mean(df.temp[idx, ]$age - round(df.temp[idx, y]))
-  }
+    for(i in 1:26){
+        idx = which(round(df.temp[, y]) == i)
+        df.temp$mean[idx] = mean(df.temp[idx, ]$age - round(df.temp[idx, y]))
+        }
   
-  # Round age predictions and compute rounded residuals
-  df.temp[, y] = round(df.temp[, y])
-  df.temp$res = df.temp[, y] - df.temp$age
+    # Round age predictions and compute rounded residuals
+    df.temp[, y] = round(df.temp[, y])
+    df.temp$res = df.temp[, y] - df.temp$age
   
-  # Plot residuals
-  ggplot(df.temp, aes_string(x = y, y = 'res')) + 
-    geom_count(aes(color = -abs(res + mean)), show.legend = FALSE) + 
-    scale_color_viridis(guide = 'none') +
-    scale_size_area(max_size = 8) + 
-    theme_classic() + 
-    scale_x_continuous(breaks=seq(0, 26, by=2), limits=c(0, 26)) + 
-    scale_y_continuous(limits=c(-15, 15)) + 
-    theme(text = element_text(size = 10), plot.title = element_text(hjust = 0.5)) + 
-    labs(x = 'Predicted age', y = 'Residual', title = title)
+    # Plot residuals
+    p = ggplot(df.temp, aes_string(x = y, y = 'res')) + 
+        geom_count(aes(color = -abs(res + mean)), show.legend = FALSE) + 
+        scale_color_viridis(guide = 'none') +
+        scale_size_area(max_size = 4) + 
+        theme_minimal() + 
+        scale_x_continuous(breaks=seq(0, 26, by=2), limits=c(0, 26)) + 
+        scale_y_continuous(limits=c(-11, 11)) + 
+        theme(text = element_text(size = 10), plot.title = element_text(hjust = 0.5)) + 
+        labs(x = 'Predicted age', y = 'Residual', title = title) + 
+        geom_line(aes(x = y1, -mean))
+  
+    return(p)
 }
 
 
 
 # Display residuals
-plot_residuals('y1', 'Deep learning residuals')
+residual_plot = plot_residuals('y1', 'B')
 
 
-compute_kl_divergence = function(y, sex){
-  #' Compute Kullback-Leibler divergence of 'y' wrt 'age'
-  #' y: predictions to use, e.g. 'y1'
-  #' sex: e.g. 'male'
-  
-  # Obtain x-range for integration
-  a = round(min(density(results[which(results$sex == sex), y])$x))
-  b = round(max(density(results[which(results$sex == sex), y])$x))
-  # Compute y density estimates for read age (p) and predicted age (q)
-  p = density(results[which(results$sex == sex), 'age'], from = a, to = b)$y
-  q = density(results[which(results$sex == sex), y], from = a, to = b)$y
-  # Return KL-divergence
-  return(-integrate_num(p*log(q/p), a, b, 'simpson'))  
+# Plot standard errors vs predicted age
+y = 'y1'
+title = 'C'
+
+for(sex in c('male', 'female')){
+    variances_ = data.frame(y1 = rep(0, 26), y2 = rep(0, 26), y3 = rep(0, 26))
+    for(i in 1:26){
+        variances_[i, y] = sd(results[which(round(results[, y]) == i & results$sex == sex), y])
+        variances_$sex = sex
+        variances_$age = 1:26
+    }
+    if(sex == 'male'){
+        variances = variances_  
+    }else if(sex == 'female'){
+        variances = rbind(variances, variances_)  
+    }
 }
 
+standard_errors = ggplot(variances, aes_string(x = 'age', y = y, color = 'sex')) + 
+    geom_point(size = 2) + 
+    theme_minimal() + 
+    scale_x_continuous(breaks=seq(0, 26, by=2), limits=c(0, 26)) + 
+    theme(text = element_text(size = 10), plot.title = element_text(hjust = 0.5), legend.position = c(0.9, 0.2)) + 
+    labs(x = 'Age', y = 'Standard deviation', title = title) + 
+    scale_color_discrete(name = '', labels = c('Female', 'Male'))
 
-# Compute KL-divergence
-compute_kl_divergence('y1', 'male')
-
-
-# Helper function to generate colors from the standard ggplot2 palette
-get_colors = function(n) hcl(h = seq(15, 375, length = n + 1), l = 65, c = 100)[1:n]
+grid.arrange(scatterplot, residual_plot, standard_errors, layout_matrix = rbind(c(1, 1), c(2, 3)))
 
 
 # For each model, for each age, compute MSE contribution
 y_vals = c()
 for(y in c('y1', 'y2')){
-  temp = rep(0, 26)
-  for(i in 1:26){
-    idx = which(results$age == i)
-    temp[i] = sum((results[idx, 'age'] - results[idx, y])**2 / 3540)
-  }
-  y_vals = c(y_vals, temp)
+    temp = rep(0, 26)
+    for(i in 1:26){
+        idx = which(results$age == i)
+        temp[i] = sum((results[idx, 'age'] - results[idx, y])**2 / 3540)
+        }
+    y_vals = c(y_vals, temp)
 }
 
 
 # Create dataframe with age-wise MSE contributions with model as factor variable
 df.temp = data.frame(
-  x = c(1:26, 1:26), 
-  y = y_vals, 
-  f = c(rep('deep_learning', 26), rep('length', 26))
-  )
+    x = c(1:26, 1:26), 
+    y = y_vals, 
+    f = c(rep('deep_learning', 26), rep('length', 26))
+    )
 
-#, fill = factor(f, levels = c('length', 'deep_learning'))
+
 # Plot MSE contributions against age for all three models
 ggplot(df.temp, aes(x = x, y = y, fill = factor(f, levels = c('length', 'deep_learning')), color = f)) + 
     geom_area(position = 'identity', alpha = 0.6) + 
@@ -215,28 +215,70 @@ ggplot(df.temp, aes(x = x, y = y, fill = factor(f, levels = c('length', 'deep_le
     scale_color_manual(values = c('black', 'black'), guide = 'none')
 
 
-# Plot standard errors vs predicted age
-y = 'y1'
-title = 'Deep learning standard errors'
+#########################
+### Confidence bounds ###
+#########################
 
-for(sex in c('male', 'female')){
-  variances_ = data.frame(y1 = rep(0, 26), y2 = rep(0, 26), y3 = rep(0, 26))
-  for(i in 1:26){
-    variances_[i, y] = sd(results[which(round(results[, y]) == i & results$sex == sex), y])
-    variances_$sex = sex
-    variances_$age = 1:26
-  }
-  if(sex == 'male'){
-    variances = variances_  
-  }else if(sex == 'female'){
-    variances = rbind(variances, variances_)  
-  }
+# wrapper function to get true ages based on sex
+get_x_vals = function(sex) seq(min(results$age[which(results$sex == sex)]), max(results$age[which(results$sex == sex)]))
+
+
+get_lower_bound = function(sex){
+    #' Produce lower confidence bound for sex
+    #' 
+    #' 
+    x = get_x_vals(sex)
+    
+    lower = numeric(length(x))
+    for(i in 1:length(x)){
+        estimates = results$y1[which(results$age == x[i] & results$sex == sex)]
+        n = length(estimates)
+        lower[i] = sort(estimates)[floor(n*0.05) + 1]
+    }
+    return(lower)
 }
 
-ggplot(variances, aes_string(x = 'age', y = y, color = 'sex')) + 
-    geom_point(size = 4) + 
+
+get_upper_bound = function(sex){
+    #' Produce upper confidence bound for sex
+    #' 
+    #' 
+    x = get_x_vals(sex)
+    
+    upper = numeric(length(x))
+    for(i in 1:length(x)){
+        estimates = results$y1[which(results$age == x[i] & results$sex == sex)]
+        n = length(estimates)
+        upper[i] = sort(estimates)[ceiling(n*0.95)]
+    }
+    return(upper)
+}
+
+
+# Plot confidence bounds
+ggplot() + 
+    geom_line(aes(get_x_vals('female'), get_x_vals('female'))) + 
+    geom_line(aes(get_x_vals('male'), get_lower_bound('male')), linetype = 2) + 
+    geom_line(aes(get_x_vals('male'), get_upper_bound('male')), linetype = 2) + 
+    geom_line(aes(get_x_vals('female'), get_lower_bound('female'), color = 'test'), linetype = 2) + 
+    geom_line(aes(get_x_vals('female'), get_upper_bound('female')), linetype = 2) + 
+    theme_classic()
+
+
+# Create dataframe for comparing age vs age for length model and deep learning model
+df.temp = melt(results, measure.vars = c('y2', 'y1'))
+# Add a small term to the x-axis for the length predictions to enable pairwise comparison
+df.temp$age[which(df.temp$variable == 'y1')] = df.temp$age[which(df.temp$variable == 'y1')] + 0.3
+
+
+# Plot difference in age-vs-age for length and deep learning
+ggplot(df.temp[which(df.temp$sex == 'female'), ], aes(x = age, y = round(value), color = variable)) + 
+    geom_count() + 
+    scale_size_area(max_size = 16) + 
+    geom_abline(slope = 1, intercept = 0, size = 1) + 
     theme_classic() + 
-    scale_x_continuous(breaks=seq(0, 26, by=2), limits=c(0, 26)) + 
-    theme(text = element_text(size = 10), plot.title = element_text(hjust = 0.5), legend.position = c(0.95, 0.15)) + 
-    labs(x = 'Age', y = 'Standard deviation', title = title) + 
-    scale_color_discrete(name = '', labels = c('Female', 'Male'))
+    scale_x_continuous(breaks=seq(0, 26, by=2), limits=c(0, 26)) +
+    scale_y_continuous(breaks=seq(0, 26, by=2), limits=c(0, 26)) +
+    labs(x = 'True age', y = 'Predicted age', title = 'Female predictions') + 
+    theme(text = element_text(size = 20), plot.title = element_text(hjust = 0.5)) + 
+    scale_colour_discrete(name = 'Model', labels = c('Length', 'Deep learning'))
