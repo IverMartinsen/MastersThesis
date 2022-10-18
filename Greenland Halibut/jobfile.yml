@@ -1,0 +1,27 @@
+---
+kind: job
+apiVersion: batch/v1
+metadata:
+  name: greenland-halibut-cross-validation
+spec:
+  template:
+    spec:
+      containers:
+      - name: greenland-halibut
+        image: "ivermartinsen/greenland-halibut:latest"
+        workingDir: /storage/GreenlandHalibut
+        command: ["/bin/bash", "-c"]
+        args: ["source activate greenland-halibut && python train_models.py"]
+        volumeMounts:
+        - name: storage
+          mountPath: /storage
+        env:
+        - name: WANDB_API_KEY
+          value: 9e0c61e66b874aa0b40cf64f58a3a25c8a3d60d4
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: storage
+      restartPolicy: onFailure
+  backoffLimit: 0
+...

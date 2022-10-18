@@ -1,0 +1,11 @@
+name: greenland-halibut
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9.12
+  - tensorflow=2.7.0
+  - numpy=1.22.3
+  - pandas=1.4.3
+  - wandb=0.13.3
