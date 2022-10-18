@@ -8,10 +8,10 @@ spec:
     spec:
       containers:
       - name: greenland-halibut
-        image: "ivermartinsen/greenland-halibut:latest"
+        image: "ivermartinsen/tensorflow:latest"
         workingDir: /storage/GreenlandHalibut
         command: ["/bin/bash", "-c"]
-        args: ["source activate greenland-halibut && python train_models.py"]
+        args: ["python3 train_models.py"]
         volumeMounts:
         - name: storage
           mountPath: /storage

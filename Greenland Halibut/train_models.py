@@ -8,6 +8,9 @@ import tensorflow as tf
 import numpy as np
 from utils import stratified_idxs
 
+# if results should be stored locally as csv-files
+save_manually = False
+
 # set hyper parameters
 config = {
     "max_epochs": 1,
@@ -142,12 +145,12 @@ image_shape = img_known.shape[1:4]
 model = None
 
 # Create dataframes for storing summary (per training session) results and individual (per image) results
-summary = pd.DataFrame(index=range(10), columns=["loss1", "loss2"])
+summary = pd.DataFrame(index=range(10), columns=["Test loss (DL)", "Test loss (regression)"])
 results = pd.DataFrame()
 
 # Compute mean values to use as bias initial values
 mean_values = (
-    0,
+    0, 
     np.mean(df["age"].iloc[np.where(df["sex"] == "female")]),
     np.mean(df["age"].iloc[np.where(df["sex"] == "male")]),
     np.mean(df["age"].iloc[np.where(df["sex"] == "unknown")]),
@@ -157,7 +160,7 @@ mean_values = (
 for i in range(len(strata_idxs)):
 
     # Launch a wandb background process to sync data
-    run = wandb.init(project=f"Run {i+1}", reinit=True, config=config)
+    run = wandb.init(project="Greenland halibut cross validation", reinit=True, config=config)
 
     # choose strata i for testing
     test_idx = strata_idxs[i]
@@ -198,7 +201,7 @@ for i in range(len(strata_idxs)):
     y1 = model.predict(set_from_idx(test_idx)).flatten()
 
     # Store test loss in dataframe
-    summary["loss1"].iloc[i] = model.evaluate(set_from_idx(test_idx))
+    summary["Test loss (DL)"].iloc[i] = model.evaluate(set_from_idx(test_idx))
 
     # Predict age of test data using length
     X = mat_from_idx(np.concatenate((train_idx, valid_idx)))
@@ -213,7 +216,7 @@ for i in range(len(strata_idxs)):
     y2 = np.matmul(mat_from_idx(test_idx), w)
 
     # Store test loss in dataframe
-    summary["loss2"].iloc[i] = tf.keras.losses.mean_squared_error(
+    summary["Test loss (regression)"].iloc[i] = tf.keras.losses.mean_squared_error(
         y2,
         np.asarray(
             df["age"].iloc[np.where(df["sex"] != "unknown")].iloc[test_idx]
@@ -236,27 +239,29 @@ for i in range(len(strata_idxs)):
         }
     )
 
+    run.log(
+        {
+            "Test summary": wandb.Table(dataframe=summary),
+            "Test results": wandb.Table(dataframe=result),
+        }
+    )
+
     # Save result of current trial to file, just in case
-    result.to_csv("trial_" + str(i + 1) + ".csv")
-    summary.to_csv("summary_" + str(i + 1) + ".csv")
+    if save_manually:
+        result.to_csv("trial_" + str(i + 1) + ".csv")
+        summary.to_csv("summary_" + str(i + 1) + ".csv")
 
     # Merge existing results with the result from current trial
     if i == 0:
         results = result
     else:
         results = pd.concat((results, result))
-
-    run.log(
-        {
-            "Test summary": wandb.table(dataframe=summary),
-            "Test results": wandb.Table(dataframe=result),
-        }
-    )
     
-    model.save(f"saved_models/model{i+1}")
+    model.save(f"saved_models/model{i+1}", save_format="tf")
 
     run.finish()
 
 # Save results to files
-summary.to_csv("summary.csv")
-results.to_csv("results.csv")
+if save_manually:
+    summary.to_csv("summary.csv")
+    results.to_csv("results.csv")

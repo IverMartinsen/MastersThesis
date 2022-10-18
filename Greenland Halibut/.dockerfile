@@ -3,14 +3,17 @@
 # In our example, we want import the python image.
 # So we write 'python' for the image name and 'latest' for the version.
 # Note that we also specify a platform?
-FROM --platform=amd64 conda/miniconda3:latest
+# FROM --platform=amd64 conda/miniconda3:latest
+FROM --platform=arm64 tensorflow/tensorflow:latest-gpu
 
 # The WORKDIR command sets the working directory for subseqent command.
-WORKDIR /src
+# WORKDIR /src
 
-COPY requirements.yml /src
+# COPY requirements.yml /src
 
 # The RUN command specifyes what will be run when the image is created.
 # In this case we install mamba and create a python environment.
-RUN conda install mamba -n base -c conda-forge
-RUN mamba env create --file requirements.yml
+# RUN conda install mamba -n base -c conda-forge
+# RUN mamba env create --file requirements.yml
+RUN pip install wandb
+RUN pip install pandas
