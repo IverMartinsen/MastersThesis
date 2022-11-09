@@ -1,6 +1,7 @@
 import numpy as np
 
-def stratified_idxs(labels, splits, seed = None):
+
+def stratified_idxs(labels, splits, seed=None):
     """
     Produce stratified subsets of indices from labels.
 
@@ -22,7 +23,7 @@ def stratified_idxs(labels, splits, seed = None):
         try:
             num_subsets = len(splits)
         except TypeError:
-            print('splits must be int or list-like')
+            print("splits must be int or list-like")
 
     class_labels = np.unique(labels)
 
@@ -38,27 +39,25 @@ def stratified_idxs(labels, splits, seed = None):
 
         rng.shuffle(class_idxs)
 
-        subset_idx = np.round(
-            np.cumsum(class_size * np.array(splits))).astype('int')
+        subset_idx = np.round(np.cumsum(class_size * np.array(splits))).astype("int")
 
         for j in range(num_subsets):
 
             if i == 0:
                 if j == 0:
-                    subsets[j] = class_idxs[:subset_idx[j]]
+                    subsets[j] = class_idxs[: subset_idx[j]]
                 else:
-                    subsets[j] = class_idxs[subset_idx[j - 1]:subset_idx[j]]
+                    subsets[j] = class_idxs[subset_idx[j - 1] : subset_idx[j]]
 
             else:
                 if j == 0:
                     subsets[j] = np.concatenate(
-                        (subsets[j], class_idxs[:subset_idx[j]])
+                        (subsets[j], class_idxs[: subset_idx[j]])
                     )
 
                 else:
                     subsets[j] = np.concatenate(
-                        (subsets[j],
-                         class_idxs[subset_idx[j - 1]:subset_idx[j]])
+                        (subsets[j], class_idxs[subset_idx[j - 1] : subset_idx[j]])
                     )
 
             rng.shuffle(subsets[j])

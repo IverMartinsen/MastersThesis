@@ -7,26 +7,25 @@ import pandas as pd
 import tensorflow as tf
 import numpy as np
 from utils import stratified_idxs
+from models import get_full_model, get_deployable_model, get_categorical_model
 
-# if results should be stored locally as csv-files
-save_manually = False
+save_results_to_csv = False
+save_results_using_wandb = True
 
-# set hyper parameters
 config = {
-    "max_epochs": 1,
+    "max_epochs": 100,
     "batch_size": 32,
     "patience": 20,
     "learning_rate": 1e-4,
     "dropout_rate": 0.4,
 }
 
-
-# Load dataframe of features
 df = pd.read_csv("data/dataframe.csv")
 
-# Load images
-img_known = np.load("data/images256.npy")[np.where(df["sex"] != "unknown")]
-img_unknown = np.load("data/images256.npy")[np.where(df["sex"] == "unknown")]
+path_to_images = "data/images256.npy"
+
+img_known_sex = np.load(path_to_images)[np.where(df["sex"] != "unknown")]
+img_unknown_sex = np.load(path_to_images)[np.where(df["sex"] == "unknown")]
 
 # Create stratified indices for selecting datasets for training etc.
 strata_idxs = stratified_idxs(
@@ -35,49 +34,50 @@ strata_idxs = stratified_idxs(
 
 
 # Define utility functions for creating tensorflow compatible datasets from array of indices
-def set_from_idx(idx, training=False):
-    # If training, also include images with unknown sexes
-    if training:
-        return (
-            tf.data.Dataset.from_tensor_slices(
-                (
-                    (
-                        tf.convert_to_tensor(
-                            np.concatenate(
-                                (
-                                    df["sex"].iloc[np.where(df["sex"] == "unknown")],
-                                    df["sex"]
-                                    .iloc[np.where(df["sex"] != "unknown")]
-                                    .iloc[idx],
-                                )
-                            )
-                        ),
-                        np.concatenate((img_unknown, img_known[idx])),
-                    ),
-                    np.concatenate(
-                        (
-                            df["age"].iloc[np.where(df["sex"] == "unknown")],
-                            df["age"].iloc[np.where(df["sex"] != "unknown")].iloc[idx],
-                        )
-                    ),
-                )
-            )
-            .shuffle(len(idx))
-            .batch(config["batch_size"])
+def test_set_from_idx(idx):
+
+    return tf.data.Dataset.from_tensor_slices(
+        (
+            (
+                tf.convert_to_tensor(
+                    df["sex"].iloc[np.where(df["sex"] != "unknown")].iloc[idx]
+                ),
+                img_known_sex[idx],
+            ),
+            df["age"].iloc[np.where(df["sex"] != "unknown")].iloc[idx],
         )
-    # Else, if testing or validating, only include images with complete features
-    else:
-        return tf.data.Dataset.from_tensor_slices(
+    ).batch(config["batch_size"])
+
+
+def train_set_from_idx(idx):
+
+    return (
+        tf.data.Dataset.from_tensor_slices(
             (
                 (
                     tf.convert_to_tensor(
-                        df["sex"].iloc[np.where(df["sex"] != "unknown")].iloc[idx]
+                        np.concatenate(
+                            (
+                                df["sex"].iloc[np.where(df["sex"] == "unknown")],
+                                df["sex"]
+                                .iloc[np.where(df["sex"] != "unknown")]
+                                .iloc[idx],
+                            )
+                        )
                     ),
-                    img_known[idx],
+                    np.concatenate((img_unknown_sex, img_known_sex[idx])),
                 ),
-                df["age"].iloc[np.where(df["sex"] != "unknown")].iloc[idx],
+                np.concatenate(
+                    (
+                        df["age"].iloc[np.where(df["sex"] == "unknown")],
+                        df["age"].iloc[np.where(df["sex"] != "unknown")].iloc[idx],
+                    )
+                ),
             )
-        ).batch(config["batch_size"])
+        )
+        .shuffle(len(idx))
+        .batch(config["batch_size"])
+    )
 
 
 def mat_from_idx(idx):
@@ -93,76 +93,32 @@ def mat_from_idx(idx):
     )
 
 
-def build_model():
-    # Create layer for mapping categorical labels to int
-    index_layer = tf.keras.layers.experimental.preprocessing.StringLookup()
-
-    # Fit index layer on training data
-    index_layer.adapt(tf.constant(df["sex"]))
-
-    # Create layer for one-hot-encoding the categorical labels
-    encoding_layer = tf.keras.layers.experimental.preprocessing.CategoryEncoding(
-        num_tokens=index_layer.vocabulary_size(), output_mode="binary"
-    )
-
-    # Define pretrained base model without classification head. Use global average pooling on output.
-    base_model = tf.keras.applications.Xception(
-        input_shape=image_shape, include_top=False, pooling="avg"
-    )
-
-    # Define full model. Note that by setting training=False in the base model
-    # we always run the model in inference mode.
-    img_input = tf.keras.layers.Input(image_shape)
-    cat_input = tf.keras.Input(shape=(1,), name="gender", dtype="string")
-
-    # First we process the images
-    x = tf.keras.applications.xception.preprocess_input(img_input)
-    x = tf.keras.layers.experimental.preprocessing.RandomTranslation(0, 0.1)(x)
-    x = tf.keras.layers.experimental.preprocessing.RandomRotation(
-        0.1, fill_mode="constant"
-    )(x)
-    x = base_model(x, training=False)
-    x = tf.keras.layers.Dropout(config["dropout_rate"])(x)
-    x = tf.keras.layers.Dense(
-        4, "relu", bias_initializer=tf.keras.initializers.Constant(mean_values)
-    )(x)
-    # Then we us multiplication to get the gender conditional age predictions
-    outputs = tf.keras.layers.Dot(axes=1)([x, encoding_layer(index_layer(cat_input))])
-    # Finally, we concatenate the age prediction with the one-hot sex matrix
-    _model = tf.keras.models.Model([cat_input, img_input], outputs)
-
-    # Compile model using custom loss function
-    _model.compile(
-        tf.keras.optimizers.Adam(learning_rate=config["learning_rate"]),
-        tf.keras.losses.MeanSquaredError(),
-    )
-
-    return _model
-
-
-# Set hyperparameters for training
-image_shape = img_known.shape[1:4]
+image_shape = img_known_sex.shape[1:4]
 model = None
 
 # Create dataframes for storing summary (per training session) results and individual (per image) results
-summary = pd.DataFrame(index=range(10), columns=["Test loss (DL)", "Test loss (regression)"])
+summary = pd.DataFrame(
+    index=range(10), columns=["Test loss (DL)", "Test loss (regression)"]
+)
 results = pd.DataFrame()
 
 # Compute mean values to use as bias initial values
 mean_values = (
-    0, 
+    0,
     np.mean(df["age"].iloc[np.where(df["sex"] == "female")]),
     np.mean(df["age"].iloc[np.where(df["sex"] == "male")]),
     np.mean(df["age"].iloc[np.where(df["sex"] == "unknown")]),
 )
 
-# Iterate through the stratified indices to create training, validation and test sets
+vocabulary = np.unique(df["sex"])
+
 for i in range(len(strata_idxs)):
 
-    # Launch a wandb background process to sync data
-    run = wandb.init(project="Greenland halibut cross validation", reinit=True, config=config)
+    if save_results_using_wandb:
+        run = wandb.init(
+            project="Greenland halibut cross validation", reinit=True, config=config
+        )
 
-    # choose strata i for testing
     test_idx = strata_idxs[i]
 
     # If possible, choose next strata for validation and the rest for training
@@ -180,28 +136,39 @@ for i in range(len(strata_idxs)):
 
     print(f"\nStarting trial {i + 1}\n")
 
-    # Predict age by image
-    model = build_model()
+    deployable_model = get_deployable_model(
+        image_shape=image_shape,
+        initial_bias=mean_values,
+        dropout_rate=config["dropout_rate"],
+    )
+    categorical_model = get_categorical_model(vocabulary=vocabulary)
+    model = get_full_model(deployable_model, categorical_model, image_shape)
+
+    model.compile(
+        tf.keras.optimizers.Adam(learning_rate=config["learning_rate"]),
+        tf.keras.losses.MeanSquaredError(),
+    )
 
     callbacks = [
         tf.keras.callbacks.EarlyStopping(
             patience=config["patience"], restore_best_weights=True
-        ),
-        wandb.keras.WandbCallback(),
+        )
     ]
+    if save_results_using_wandb:
+        callbacks.append(wandb.keras.WandbCallback())
 
     model.fit(
-        set_from_idx(train_idx, training=True),
+        train_set_from_idx(train_idx),
         epochs=config["max_epochs"],
-        validation_data=set_from_idx(valid_idx),
+        validation_data=test_set_from_idx(valid_idx),
         callbacks=callbacks,
     )
 
     # Compute deep learning predictions
-    y1 = model.predict(set_from_idx(test_idx)).flatten()
+    y1 = model.predict(test_set_from_idx(test_idx)).flatten()
 
     # Store test loss in dataframe
-    summary["Test loss (DL)"].iloc[i] = model.evaluate(set_from_idx(test_idx))
+    summary["Test loss (DL)"].iloc[i] = model.evaluate(test_set_from_idx(test_idx))
 
     # Predict age of test data using length
     X = mat_from_idx(np.concatenate((train_idx, valid_idx)))
@@ -239,15 +206,16 @@ for i in range(len(strata_idxs)):
         }
     )
 
-    run.log(
-        {
-            "Test summary": wandb.Table(dataframe=summary),
-            "Test results": wandb.Table(dataframe=result),
-        }
-    )
+    if save_results_using_wandb:
+        run.log(
+            {
+                "Test summary": wandb.Table(dataframe=summary),
+                "Test results": wandb.Table(dataframe=result),
+            }
+        )
 
     # Save result of current trial to file, just in case
-    if save_manually:
+    if save_results_to_csv:
         result.to_csv("trial_" + str(i + 1) + ".csv")
         summary.to_csv("summary_" + str(i + 1) + ".csv")
 
@@ -256,12 +224,13 @@ for i in range(len(strata_idxs)):
         results = result
     else:
         results = pd.concat((results, result))
-    
-    model.save(f"saved_models/model{i+1}", save_format="tf")
 
-    run.finish()
+    deployable_model.save(f"saved_models/model{i+1}", save_format="tf")
+
+    if save_results_using_wandb:
+        run.finish()
 
 # Save results to files
-if save_manually:
+if save_results_to_csv:
     summary.to_csv("summary.csv")
     results.to_csv("results.csv")
