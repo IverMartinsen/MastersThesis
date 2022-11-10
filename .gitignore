@@ -8,3 +8,4 @@ __pycache__
 /saved_models
 /wandb
 jobfile.yml
+saved_models

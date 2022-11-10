@@ -95,6 +95,8 @@ def mat_from_idx(idx):
 
 image_shape = img_known_sex.shape[1:4]
 model = None
+deployable_model = None
+categorical_model = None
 
 # Create dataframes for storing summary (per training session) results and individual (per image) results
 summary = pd.DataFrame(
@@ -116,7 +118,7 @@ for i in range(len(strata_idxs)):
 
     if save_results_using_wandb:
         run = wandb.init(
-            project="Greenland halibut cross validation", reinit=True, config=config
+            project="Greenland halibut model training", reinit=True, config=config
         )
 
     test_idx = strata_idxs[i]
@@ -132,7 +134,7 @@ for i in range(len(strata_idxs)):
 
     tf.keras.backend.clear_session()
 
-    del model
+    del model, deployable_model, categorical_model
 
     print(f"\nStarting trial {i + 1}\n")
 
@@ -225,7 +227,7 @@ for i in range(len(strata_idxs)):
     else:
         results = pd.concat((results, result))
 
-    deployable_model.save(f"saved_models/model{i+1}", save_format="tf")
+    deployable_model.save(f"saved_models/model{i+1}", save_format="h5")
 
     if save_results_using_wandb:
         run.finish()
