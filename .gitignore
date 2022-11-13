@@ -9,3 +9,4 @@ __pycache__
 /wandb
 jobfile.yml
 saved_models
+images_to_predict
