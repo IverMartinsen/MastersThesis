@@ -1,3 +1,15 @@
+# Script for predicting otolith age
+#
+# Must be accompanied by the following
+#
+#   1) A folder named 'saved_models' with saved TensorFlow models
+#   2) A folder named 'images_to_predict' with images to predict
+#
+# Run through command line by 
+# python make_predictions.py --sex female
+#
+# where female may be replaced by 'male' or 'unknown'
+
 import logging
 logging.getLogger('tensorflow').disabled = True
 import os
@@ -23,7 +35,7 @@ if __name__ == "__main__":
     path_to_images = "images_to_predict"
     images = os.listdir(path_to_images)
 
-    sex = parser.parse_args().sex    
+    sex = parser.parse_args().sex
     if sex == "female":
         factor = np.array((1, 0))
     elif sex == "male":
@@ -42,7 +54,7 @@ if __name__ == "__main__":
             warnings.warn(f"Input not of required size. Reshaping image to {required_image_size}.")
             image = np.array(Image.open(image_path).resize(required_image_size))[None, :, :, :]
         
-        predictions = np.zeros(10)
+        predictions = np.zeros(len(models))
         
         for i, model in enumerate(models):
             predictions[i] = np.sum(np.array(model.predict(image)[0][1:3])*factor)
